@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug only: plain HTTP to a local Sail server from the emulator
+     (-PbaseUrl=http://10.0.2.2) or a phone on the LAN. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>
