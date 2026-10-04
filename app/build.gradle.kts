@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -23,6 +25,16 @@ val tenantSlug = prop("tenantSlug", "")
 val appName = prop("appName", "My ISP")
 val appIdSuffix = prop("appIdSuffix", "")
 
+/*
+ * Release signing, from a properties file kept outside the repository:
+ * storeFile, keyAlias, storePassword, keyPassword. Default location
+ * ~/.config/sparo/myisp-signing.properties, or -PsigningProps=/path. Without
+ * it the release build is simply unsigned - every fork still builds, and each
+ * ISP signs with its own key.
+ */
+val signingFile = file(prop("signingProps", "${System.getProperty("user.home")}/.config/sparo/myisp-signing.properties"))
+val signing = Properties().apply { if (signingFile.isFile) signingFile.inputStream().use(::load) }
+
 android {
     namespace = "run.sparo.myisp"
     compileSdk {
@@ -45,8 +57,20 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        if (signing.getProperty("storeFile") != null) {
+            create("release") {
+                storeFile = file(signing.getProperty("storeFile"))
+                storePassword = signing.getProperty("storePassword")
+                keyAlias = signing.getProperty("keyAlias")
+                keyPassword = signing.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            signingConfigs.findByName("release")?.let { signingConfig = it }
             // R8: shrink, optimise and drop unused resources. What keeps the
             // APK under its 5 MB budget (checked by `./gradlew checkApkSize`).
             optimization {
