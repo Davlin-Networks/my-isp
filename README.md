@@ -55,6 +55,30 @@ A branded build opens straight onto that provider, and has no provider picker or
 
 **Publishing:** sign the build with your own key, and publish it under the provider's own Play Console account. Many near-identical apps from one developer account run into Play's repetitive-content policy.
 
+## Signing a release
+
+The repository holds no key. The build reads a properties file outside it:
+
+```properties
+# ~/.config/sparo/myisp-signing.properties  (or -PsigningProps=/path/to/file)
+storeFile=/home/you/keys/myisp-release.jks
+keyAlias=myisp
+storePassword=…
+keyPassword=…
+```
+
+With the file present, `./gradlew assembleRelease` gives a signed `app-release.apk`. Without it, the release build is unsigned and everything else still works.
+
+Keep the key and its password safe. An update installs only over an app signed with the same key, so a lost key means customers must uninstall and reinstall.
+
+To create one:
+
+```bash
+keytool -genkeypair -keystore myisp-release.jks -alias myisp -keyalg RSA -keysize 4096 -validity 10000
+```
+
+If links should open your build directly, its certificate fingerprint must be listed in your Sparo server's `/.well-known/assetlinks.json`. Read the fingerprint with `apksigner verify --print-certs app-release.apk`.
+
 ## Settings
 
 | Gradle property | Default | |
