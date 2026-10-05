@@ -2,6 +2,7 @@ package run.sparo.myisp.ui
 
 import android.net.Uri
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,6 +13,9 @@ import run.sparo.myisp.AppContainer
 import run.sparo.myisp.data.Account
 import run.sparo.myisp.data.ApiException
 import run.sparo.myisp.data.Provider
+import run.sparo.myisp.ui.theme.ThemeMode
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /** Where the app is: which screen family, never a detail of one. */
 sealed interface Phase {
@@ -45,6 +49,9 @@ data class AppState(
     val signInBusy: Boolean = false,
     val signInError: String? = null,
     val notice: String? = null,
+    val themeMode: ThemeMode = ThemeMode.System,
+    /** Changes on every sign-in and sign-out: the screens' data belongs to one. */
+    val session: Int = 0,
 )
 
 /**
@@ -53,10 +60,32 @@ data class AppState(
  * one and forgets everything about it before the new one is shown.
  */
 class AppViewModel(private val app: AppContainer) : ViewModel() {
-    private val _state = MutableStateFlow(AppState())
+    private val _state = MutableStateFlow(
+        AppState(themeMode = runCatching { ThemeMode.valueOf(app.store.themeMode ?: "") }.getOrDefault(ThemeMode.System)),
+    )
     val state: StateFlow<AppState> = _state
 
     private val signedIn: Boolean get() = app.tokens.get() != null
+
+    /**
+     * Where the signed-in screens keep their data (usage, payments, support).
+     * One store per sign-in, cleared when it ends: what one customer loaded
+     * can never show on the next one's screens - on a shared phone, or after
+     * switching accounts. It lives here, not in the activity, so it survives
+     * rotation but not a sign-out.
+     */
+    var sessionStore = ViewModelStore()
+        private set
+
+    private fun newSession() {
+        sessionStore.clear()
+        sessionStore = ViewModelStore()
+        _state.update { it.copy(session = it.session + 1) }
+    }
+
+    override fun onCleared() {
+        sessionStore.clear()
+    }
 
     init {
         viewModelScope.launch {
@@ -66,7 +95,19 @@ class AppViewModel(private val app: AppContainer) : ViewModel() {
 
     /** First launch of this process, with the link that opened it if any. */
     fun start(link: Uri?) {
-        if (_state.value.phase != Phase.Starting) return
+        if (_state.value.phase != Phase.Starting || starting) return
+        starting = true
+        // The Keystore decrypt behind `signedIn` stays off the main thread:
+        // the first frame never waits on it.
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { app.tokens.get() }
+            begin(link)
+        }
+    }
+
+    private var starting = false
+
+    private fun begin(link: Uri?) {
 
         val slug = AppConfig.fixedSlug ?: app.store.slug
         val cached = app.store.provider?.takeIf { it.slug == slug }
@@ -192,6 +233,7 @@ class AppViewModel(private val app: AppContainer) : ViewModel() {
             try {
                 val login = app.api.login(provider.slug, username.trim(), password, AppConfig.deviceName)
                 app.tokens.set(login.token)
+                newSession()
                 app.store.lastUsername = login.account.username
                 app.store.account = login.account
                 _state.update {
@@ -252,6 +294,11 @@ class AppViewModel(private val app: AppContainer) : ViewModel() {
 
     fun dismissNotice() = _state.update { it.copy(notice = null) }
 
+    fun setThemeMode(mode: ThemeMode) {
+        app.store.themeMode = mode.name
+        _state.update { it.copy(themeMode = mode) }
+    }
+
     private fun onSessionEnded(e: ApiException) {
         when {
             e.status == 426 || e.code == "app_disabled" || e.code == "tenant_inactive" ->
@@ -274,6 +321,7 @@ class AppViewModel(private val app: AppContainer) : ViewModel() {
 
     private fun forgetAccount() {
         app.tokens.set(null)
+        newSession()
         app.store.forgetAccount()
         _state.update { it.copy(account = null, accountAt = 0) }
     }
@@ -281,6 +329,7 @@ class AppViewModel(private val app: AppContainer) : ViewModel() {
     private suspend fun forgetEverything() {
         if (signedIn) runCatching { app.api.logout() }
         app.tokens.set(null)
+        newSession()
         app.store.forgetAll()
         _state.update { AppState(phase = it.phase) }
     }

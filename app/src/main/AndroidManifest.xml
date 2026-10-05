@@ -44,6 +44,17 @@
                     android:scheme="https" />
             </intent-filter>
         </activity>
+
+        <!-- Shares a payment receipt image from the cache (Share receipt). -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.receipts"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/receipt_paths" />
+        </provider>
     </application>
 
 </manifest>

@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Every word the customer reads. English here; Kiswahili in values-sw/.
+  Server error messages arrive in English and
+  are shown as they come.
+-->
+<resources>
+    <!-- Navigation and common -->
+    <string name="nav_home">Home</string>
+    <string name="nav_usage">Usage</string>
+    <string name="nav_payments">Payments</string>
+    <string name="nav_help">Help</string>
+    <string name="settings">Settings</string>
+    <string name="back">Back</string>
+    <string name="done">Done</string>
+    <string name="try_again">Try again</string>
+    <string name="share_receipt">Share receipt</string>
+    <string name="copied">Copied</string>
+    <string name="loading_account">Loading your account…</string>
+
+    <!-- Home -->
+    <string name="home_greeting">Hi %1$s · updated %2$s</string>
+    <plurals name="days_left">
+        <item quantity="one">day left</item>
+        <item quantity="other">days left</item>
+    </plurals>
+    <string name="ring_label">%1$d of %2$d days left on your plan</string>
+    <string name="plan_meta">%1$s · %2$s plan</string>
+    <string name="status_active">Active</string>
+    <string name="status_renew_soon">Active · renew soon</string>
+    <string name="status_expired">Expired</string>
+    <string name="status_suspended">Suspended</string>
+    <string name="status_inactive">Inactive</string>
+    <string name="home_ends">Ends</string>
+    <string name="home_ended">Ended</string>
+    <string name="home_renew">Renew with M-Pesa</string>
+    <string name="home_renew_opens">Renewal opens %1$s</string>
+    <string name="home_online">Online · %1$s</string>
+    <string name="home_offline">Offline</string>
+    <string name="home_last_seen">Last connected %1$s</string>
+    <string name="home_never_seen">No connection seen yet</string>
+    <string name="home_today_data">Today ↓ %1$s · ↑ %2$s</string>
+    <string name="home_wallet">Wallet credit</string>
+    <string name="home_wallet_label">WALLET</string>
+    <string name="home_wallet_available">Available credit</string>
+    <string name="home_wallet_hint">Used first when you renew</string>
+    <string name="home_paybill">M-Pesa Paybill</string>
+    <string name="home_account">Account %1$s</string>
+    <string name="home_copy_account">Copy account number</string>
+    <string name="home_offline_banner">Offline · showing your account as of %1$s</string>
+
+    <!-- Renew -->
+    <string name="renew_title">Renew your plan</string>
+    <string name="renew_same_plan">Your plan is still running, so it renews on the same plan. You can switch after it ends on %1$s.</string>
+    <string name="renew_choose">Choose a plan. Wallet credit is used first.</string>
+    <string name="renew_your_plan">your plan</string>
+    <string name="renew_locked_after">Available after %1$s</string>
+    <string name="renew_line_plan">Plan</string>
+    <string name="renew_line_wallet">Wallet credit</string>
+    <string name="renew_line_prompt">M-Pesa prompt</string>
+    <string name="renew_other_number">+ Pay from another number</string>
+    <string name="renew_other_label">Pay from another M-Pesa number</string>
+    <string name="renew_other_hint">Leave empty to pay from the number on your account.</string>
+    <string name="renew_pay">Pay %1$s with M-Pesa</string>
+    <string name="renew_pay_credit">Renew with %1$s of credit</string>
+    <string name="renew_to">To %1$s for line %2$s</string>
+    <string name="renew_wait_title">Check your phone</string>
+    <string name="renew_wait_body">Enter your M-Pesa PIN to pay %1$s.</string>
+    <string name="renew_wait_body_from">Enter your M-Pesa PIN to pay %1$s from %2$s.</string>
+    <string name="renew_wait_progress">Waiting for M-Pesa · this updates by itself</string>
+    <string name="renew_wait_note">No prompt after a minute? Go back and try again. You won\'t be charged twice.</string>
+    <string name="renew_leave_title">Leave this payment?</string>
+    <string name="renew_leave_body">If you already entered your PIN, the payment still goes through and your plan updates. You won\'t be charged twice.</string>
+    <string name="renew_stay">Stay</string>
+    <string name="renew_leave">Leave</string>
+    <string name="renew_done_title">You\'re renewed</string>
+    <string name="renew_done_body">%1$s now runs until %2$s.</string>
+    <string name="renew_paid">Paid with M-Pesa</string>
+    <string name="renew_credit_used">Wallet credit used</string>
+    <string name="renew_receipt">M-Pesa receipt</string>
+    <string name="renew_failed_title">The payment didn\'t go through</string>
+    <string name="renew_slow">M-Pesa hasn\'t confirmed yet. If you entered your PIN, the payment will show under Payments and your plan will update. No need to pay again.</string>
+    <string name="renew_no_plans">There are no plans to buy right now. Contact %1$s.</string>
+
+    <!-- Usage -->
+    <string name="usage_title">Usage</string>
+    <string name="usage_subtitle_fair">%1$s · fair usage this period</string>
+    <string name="usage_subtitle_period">%1$s · since %2$s</string>
+    <string name="usage_of_full">of %1$s at full speed</string>
+    <string name="usage_full_for">Full speed (%1$s) for %2$s more, then %3$s.</string>
+    <string name="usage_throttled">Your speed is %1$s until the next reset.</string>
+    <string name="usage_throttled_until">Your speed is %1$s now, then %2$s after %3$s.</string>
+    <string name="usage_resets">Resets %1$s</string>
+    <string name="usage_after">After %1$s → %2$s</string>
+    <string name="usage_no_cap">Your plan has no data cap.</string>
+    <string name="usage_down_up">↓ %1$s · ↑ %2$s</string>
+    <string name="usage_30_days">Last 30 days</string>
+    <string name="usage_hint">Tap or drag across the days</string>
+    <string name="usage_today">Today</string>
+    <string name="usage_week">This week</string>
+    <string name="usage_busiest">Busiest</string>
+    <string name="usage_avg">Daily avg</string>
+    <string name="usage_connections">Connections</string>
+    <string name="usage_online_now">Online now</string>
+    <string name="usage_more">Show more</string>
+    <string name="usage_none">No usage recorded for this plan yet.</string>
+    <string name="chart_label">Daily usage, last %1$d days</string>
+
+    <!-- Payments -->
+    <string name="payments_title">Payments</string>
+    <string name="payments_none">No payments yet. They show here after you renew.</string>
+    <string name="payments_older">Show older payments</string>
+    <string name="receipt_title">Payment receipt</string>
+    <string name="receipt_plan">Plan</string>
+    <string name="receipt_paid">Paid</string>
+    <string name="receipt_method">Method</string>
+    <string name="receipt_reference">Reference</string>
+
+    <!-- Sign in -->
+    <string name="signin_tagline">Your connection, your plan and M-Pesa renewals in one place.</string>
+    <string name="signin_title">Sign in</string>
+    <string name="signin_body">Use the username and portal password from %1$s\'s web portal.</string>
+    <string name="username">Username</string>
+    <string name="password">Password</string>
+    <string name="show_password">Show password</string>
+    <string name="hide_password">Hide password</string>
+    <string name="signin_button">Sign in</string>
+    <string name="forgot_password">Forgot password?</string>
+    <string name="forgot_need_username">Type your username first, then tap Forgot password.</string>
+    <string name="not_with">Not with %1$s?</string>
+    <string name="choose_provider">Choose your provider</string>
+
+    <!-- Help -->
+    <string name="help_contact">Contact %1$s</string>
+    <string name="help_open">Open %1$s</string>
+    <string name="help_call">Call</string>
+    <string name="help_whatsapp">WhatsApp</string>
+
+    <!-- Settings -->
+    <string name="appearance">Appearance</string>
+    <string name="theme_system">Phone setting</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="signed_in_as">Signed in as %1$s</string>
+    <string name="change_password">Change password</string>
+    <string name="use_different_provider">Use a different provider</string>
+    <string name="sign_out">Sign out</string>
+    <string name="version">Version %1$s</string>
+</resources>

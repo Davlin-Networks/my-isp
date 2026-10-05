@@ -1,13 +1,17 @@
 package run.sparo.myisp.data
 
+import androidx.compose.runtime.Immutable
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /*
+ * Immutable: the UI may skip redrawing anything built from an unchanged one.
+ *
  * The Sparo subscriber API's shapes. Unknown fields are ignored, so the server can add
  * to any of these without breaking an installed app.
  */
 
+@Immutable
 @Serializable
 data class Provider(
     val slug: String,
@@ -18,6 +22,7 @@ data class Provider(
     @SerialName("min_app_version") val minAppVersion: String? = null,
 )
 
+@Immutable
 @Serializable
 data class Branding(
     @SerialName("portal_title") val portalTitle: String,
@@ -27,6 +32,7 @@ data class Branding(
     @SerialName("contact_phone") val contactPhone: String? = null,
 )
 
+@Immutable
 @Serializable
 data class Content(
     val announcement: Announcement? = null,
@@ -34,15 +40,18 @@ data class Content(
     val payments: PaymentOptions = PaymentOptions(),
 )
 
+@Immutable
 @Serializable
 data class Announcement(val text: String, val tone: String = "info")
 
+@Immutable
 @Serializable
 data class PaymentOptions(
     val paybill: String? = null,
     @SerialName("show_wallet") val showWallet: Boolean = true,
 )
 
+@Immutable
 @Serializable
 data class Login(
     val token: String,
@@ -50,6 +59,7 @@ data class Login(
     val account: Account,
 )
 
+@Immutable
 @Serializable
 data class Account(
     val username: String,
@@ -64,6 +74,7 @@ data class Account(
     val wallet: Wallet? = null,
 )
 
+@Immutable
 @Serializable
 data class Plan(
     val id: Long,
@@ -74,9 +85,11 @@ data class Plan(
     val description: String? = null,
 )
 
+@Immutable
 @Serializable
 data class Wallet(val enabled: Boolean = false, val balance: Int = 0)
 
+@Immutable
 @Serializable
 data class Usage(
     val connection: Connection,
@@ -84,6 +97,7 @@ data class Usage(
     val daily: List<Day> = emptyList(),
 )
 
+@Immutable
 @Serializable
 data class Connection(
     val online: Boolean = false,
@@ -94,12 +108,14 @@ data class Connection(
     @SerialName("upload_bytes") val up: Long = 0,
 )
 
+@Immutable
 @Serializable
 data class UsageNow(
     @SerialName("fair_usage") val fair: FairUsage? = null,
     val period: Period? = null,
 )
 
+@Immutable
 @Serializable
 data class FairUsage(
     @SerialName("resets_at") val resetsAt: String? = null,
@@ -113,12 +129,14 @@ data class FairUsage(
     val used: Long get() = down + up
 }
 
+@Immutable
 @Serializable
 data class Tier(
     @SerialName("threshold_bytes") val threshold: Long,
     @SerialName("rate_limit") val rateLimit: String,
 )
 
+@Immutable
 @Serializable
 data class Period(
     val since: String,
@@ -126,6 +144,7 @@ data class Period(
     @SerialName("upload_bytes") val up: Long = 0,
 )
 
+@Immutable
 @Serializable
 data class Day(
     val day: String,
@@ -133,6 +152,7 @@ data class Day(
     @SerialName("upload_bytes") val up: Long = 0,
 )
 
+@Immutable
 @Serializable
 data class SessionRow(
     val id: Long,
@@ -144,20 +164,24 @@ data class SessionRow(
     @SerialName("ended_by") val endedBy: String? = null,
 )
 
+@Immutable
 @Serializable
 data class SessionPage(
     val data: List<SessionRow> = emptyList(),
     @SerialName("has_more") val hasMore: Boolean = false,
 )
 
+@Immutable
 data class Plans(val plans: List<Plan>, val currentPlanId: Long?, val currentOnly: Boolean)
 
+@Immutable
 @Serializable
 data class PlansMeta(
     @SerialName("current_plan_id") val currentPlanId: Long? = null,
     @SerialName("current_plan_only") val currentOnly: Boolean = false,
 )
 
+@Immutable
 @Serializable
 data class Payment(
     val id: Long,
@@ -168,11 +192,14 @@ data class Payment(
     val plan: String? = null,
 )
 
+@Immutable
 data class PaymentPage(val payments: List<Payment>, val nextBefore: Long?)
 
+@Immutable
 @Serializable
 data class PaymentsMeta(@SerialName("next_before") val nextBefore: Long? = null)
 
+@Immutable
 @Serializable
 data class Checkout(
     val id: String,
@@ -185,6 +212,7 @@ data class Checkout(
     val account: Account? = null,
 )
 
+@Immutable
 @Serializable
 data class CheckoutStatus(
     val id: String,
@@ -194,6 +222,7 @@ data class CheckoutStatus(
     val account: Account? = null,
 )
 
+@Immutable
 @Serializable
 data class Ticket(
     val id: Long,
@@ -203,11 +232,14 @@ data class Ticket(
     val messages: List<Message> = emptyList(),
 )
 
+@Immutable
 @Serializable
 data class Message(val id: Long, val from: String, val body: String, val at: String? = null)
 
+@Immutable
 data class Tickets(val tickets: List<Ticket>, val categories: Map<String, String>, val canOpen: Boolean)
 
+@Immutable
 @Serializable
 data class TicketsMeta(
     val categories: Map<String, String> = emptyMap(),

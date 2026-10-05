@@ -1,6 +1,16 @@
 package run.sparo.myisp.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
+import run.sparo.myisp.R
+import run.sparo.myisp.ui.theme.AppIcons
+import run.sparo.myisp.ui.theme.AppTheme
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -135,14 +145,19 @@ fun HelpTab(state: AppState, vm: SupportVm, onNew: () -> Unit, onOpen: (Long) ->
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             SectionCard {
-                Text("Contact ${provider.name}", fontWeight = FontWeight.SemiBold)
-                provider.content.supportHours?.let { Muted("Open $it") }
+                Text(stringResource(R.string.help_contact, provider.name), style = MaterialTheme.typography.titleMedium)
+                provider.content.supportHours?.let { Muted(stringResource(R.string.help_open, it)) }
                 provider.branding.contactPhone?.let { phone ->
                     val digits = phone.filter(Char::isDigit)
                     val wa = if (digits.startsWith("0")) "254" + digits.drop(1) else digits
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { openUrl(context, "tel:$phone") }) { Text("Call") }
-                        OutlinedButton(onClick = { openUrl(context, "https://wa.me/$wa") }) { Text("WhatsApp") }
+                    Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        ContactButton(stringResource(R.string.help_call), AppIcons.Phone, MaterialTheme.colorScheme.primary, Modifier.weight(1f)) {
+                            openUrl(context, "tel:$phone")
+                        }
+                        // WhatsApp's mark keeps its own green: it is recognised by it.
+                        ContactButton(stringResource(R.string.help_whatsapp), AppIcons.WhatsApp, Color(0xFF25D366), Modifier.weight(1f)) {
+                            openUrl(context, "https://wa.me/$wa")
+                        }
                     }
                 }
             }
@@ -260,5 +275,18 @@ fun TicketScreen(id: Long, vm: SupportVm, onClose: () -> Unit) {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ContactButton(label: String, icon: ImageVector, tint: Color, modifier: Modifier, onClick: () -> Unit) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier.height(52.dp),
+        shape = RoundedCornerShape(15.dp),
+        border = BorderStroke(1.5.dp, AppTheme.colors.line),
+    ) {
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+        Text("  $label", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
     }
 }

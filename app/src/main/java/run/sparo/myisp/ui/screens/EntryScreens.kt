@@ -2,6 +2,28 @@ package run.sparo.myisp.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.autofill.ContentType
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentType
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.sp
+import run.sparo.myisp.R
+import run.sparo.myisp.ui.theme.AppIcons
+import run.sparo.myisp.ui.theme.AppTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -113,46 +135,100 @@ fun ConfirmProviderScreen(phase: Phase.ConfirmProvider, app: AppContainer, vm: A
 @Composable
 fun SignInScreen(state: AppState, app: AppContainer, vm: AppViewModel) {
     val provider = state.provider ?: return
+    val colors = AppTheme.colors
     val scope = rememberCoroutineScope()
     var username by rememberSaveable { mutableStateOf(app.store.lastUsername.orEmpty()) }
     var password by rememberSaveable { mutableStateOf("") }
+    var show by rememberSaveable { mutableStateOf(false) }
     var forgotNote by remember { mutableStateOf<String?>(null) }
+    val needUsername = stringResource(R.string.forgot_need_username)
 
-    EntryColumn {
-        RemoteLogo(provider.branding.logoUrl, app, 72.dp)
-        Text(provider.branding.portalTitle, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-        Muted("Sign in with your username and portal password - the same as your provider's web portal.", Modifier.fillMaxWidth())
-        state.notice?.let { Banner(it, "warning") }
-        OutlinedTextField(
-            value = username,
-            onValueChange = { username = it },
-            label = { Text("Username") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, imeAction = ImeAction.Next),
-            modifier = Modifier.fillMaxWidth(),
-        )
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Password") },
-            singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { vm.signIn(username, password) }),
-            modifier = Modifier.fillMaxWidth(),
-        )
-        state.signInError?.let { Banner(it, "error") }
-        PrimaryButton("Sign in", { vm.signIn(username, password) }, busy = state.signInBusy)
-        TextButton(onClick = {
-            if (username.isBlank()) {
-                forgotNote = "Type your username first, then tap Forgot password."
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).imePadding().verticalScroll(rememberScrollState())) {
+        // The ISP's own header: its gradient, its logo, its name.
+        Column(
+            Modifier.fillMaxWidth().background(colors.hero).statusBarsPadding().padding(start = 32.dp, end = 32.dp, top = 48.dp, bottom = 72.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            if (provider.branding.logoUrl != null) {
+                RemoteLogo(provider.branding.logoUrl, app, 76.dp)
             } else {
-                scope.launch { forgotNote = vm.forgotPassword(username) }
+                Box(
+                    Modifier.size(76.dp).clip(RoundedCornerShape(22.dp)).background(colors.onHero.copy(alpha = 0.16f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        provider.name.split(Regex("\\s+")).filter { it.isNotBlank() }.take(2).joinToString("") { it.take(1).uppercase() },
+                        color = colors.onHero, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold,
+                    )
+                }
             }
-        }) { Text("Forgot password?") }
-        forgotNote?.let { Banner(it) }
-        if (AppConfig.fixedSlug == null) {
-            TextButton(onClick = vm::chooseAnotherProvider) { Text("Not ${provider.name}? Choose your provider") }
+            Text(provider.branding.portalTitle, color = colors.onHero, style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
+            Text(stringResource(R.string.signin_tagline), color = colors.onHero.copy(alpha = 0.88f), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
+        }
+
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .offset(y = (-32).dp)
+                .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainer)
+                .navigationBarsPadding()
+                .padding(start = 24.dp, end = 24.dp, top = 28.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(stringResource(R.string.signin_title), style = MaterialTheme.typography.headlineSmall)
+                Muted(stringResource(R.string.signin_body, provider.name))
+            }
+            state.notice?.let { Banner(it, "warning") }
+            OutlinedTextField(
+                value = username,
+                onValueChange = { username = it },
+                label = { Text(stringResource(R.string.username)) },
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp),
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, imeAction = ImeAction.Next),
+                modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.Username },
+            )
+            OutlinedTextField(
+                value = password,
+                onValueChange = { password = it },
+                label = { Text(stringResource(R.string.password)) },
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp),
+                visualTransformation = if (show) VisualTransformation.None else PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { vm.signIn(username, password) }),
+                trailingIcon = {
+                    IconButton(onClick = { show = !show }) {
+                        Icon(
+                            if (show) AppIcons.EyeOff else AppIcons.Eye,
+                            contentDescription = stringResource(if (show) R.string.hide_password else R.string.show_password),
+                        )
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.Password },
+            )
+            state.signInError?.let { Banner(it, "error") }
+            PrimaryButton(stringResource(R.string.signin_button), { vm.signIn(username, password) }, busy = state.signInBusy)
+            TextButton(
+                onClick = {
+                    if (username.isBlank()) forgotNote = needUsername
+                    else scope.launch { forgotNote = vm.forgotPassword(username) }
+                },
+                modifier = Modifier.align(Alignment.CenterHorizontally).height(48.dp),
+            ) { Text(stringResource(R.string.forgot_password), fontWeight = FontWeight.Bold) }
+            forgotNote?.let { Banner(it) }
+            if (AppConfig.fixedSlug == null) {
+                HorizontalDivider(color = colors.line)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                    Muted(stringResource(R.string.not_with, provider.name))
+                    TextButton(onClick = vm::chooseAnotherProvider, modifier = Modifier.height(48.dp)) {
+                        Text(stringResource(R.string.choose_provider), fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
         }
     }
 }

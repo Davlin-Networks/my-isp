@@ -107,6 +107,11 @@ class LocalStore(private val prefs: SharedPreferences) {
 
     val accountAt: Long get() = prefs.getLong("account_at", 0)
 
+    /** "System", "Light" or "Dark" - the customer's choice in Settings. */
+    var themeMode: String?
+        get() = prefs.getString("theme_mode", null)
+        set(value) = prefs.edit().putString("theme_mode", value).apply()
+
     var lastUsername: String?
         get() = prefs.getString("last_username", null)
         set(value) = prefs.edit().putString("last_username", value).apply()

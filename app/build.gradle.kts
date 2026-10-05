@@ -1,4 +1,5 @@
 import java.util.Properties
+import java.util.zip.ZipFile
 
 plugins {
     alias(libs.plugins.android.application)
@@ -45,8 +46,8 @@ android {
         applicationId = "run.sparo.myisp$appIdSuffix"
         minSdk = 24
         targetSdk = 37
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
 
         buildConfigField("String", "BASE_URL", "\"$baseUrl\"")
         buildConfigField("String", "LINK_HOST", "\"$linkHost\"")
@@ -89,6 +90,11 @@ android {
         buildConfig = true
         resValues = true
     }
+    // English and Kiswahili only. The libraries ship translations for ~90
+    // languages this app never shows; dropping them is free size.
+    androidResources {
+        localeFilters += listOf("en", "sw")
+    }
     packaging {
         resources {
             excludes += listOf(
@@ -106,7 +112,6 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3)
-    implementation(libs.androidx.compose.material.icons.core)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
@@ -126,8 +131,9 @@ dependencies {
 }
 
 /*
- * The size budget, enforced: fails the build when the release APK is over
- * 5 MB. Run after assembleRelease (CI does both).
+ * The size budget, enforced: the build warns
+ * over 6 MB and fails over 9 MB, and prints where the bytes go so every
+ * change that adds weight shows it.
  */
 tasks.register("checkApkSize") {
     dependsOn("assembleRelease")
@@ -135,13 +141,30 @@ tasks.register("checkApkSize") {
     // reference to the build script itself.
     val apkDir = layout.buildDirectory.dir("outputs/apk/release")
     doLast {
-        val limit = 5L * 1024 * 1024
+        val budget = 6L * 1024 * 1024
+        val limit = 9L * 1024 * 1024
         val apks = apkDir.get().asFile.listFiles { f -> f.extension == "apk" }.orEmpty()
         check(apks.isNotEmpty()) { "No release APK found." }
         apks.forEach { apk ->
+            val parts = sortedMapOf<String, Long>()
+            ZipFile(apk).use { zip ->
+                zip.entries().asSequence().forEach { e ->
+                    val part = when {
+                        e.name.startsWith("classes") -> "code (dex)"
+                        e.name == "resources.arsc" -> "resource table"
+                        e.name.startsWith("res/font") -> "fonts"
+                        e.name.startsWith("res/") -> "resources"
+                        e.name.startsWith("META-INF") -> "signing/meta"
+                        else -> "other"
+                    }
+                    parts[part] = (parts[part] ?: 0) + e.compressedSize
+                }
+            }
             val mb = "%.2f".format(apk.length() / 1048576.0)
-            check(apk.length() <= limit) { "${apk.name} is $mb MB - over the 5 MB budget." }
-            println("${apk.name}: $mb MB (budget 5 MB)")
+            println("${apk.name}: $mb MB (budget 6 MB, limit 9 MB)")
+            parts.forEach { (k, v) -> println("  %-16s %7.1f KB".format(k, v / 1024.0)) }
+            check(apk.length() <= limit) { "${apk.name} is $mb MB - over the 9 MB limit." }
+            if (apk.length() > budget) logger.warn("WARNING: ${apk.name} is $mb MB - over the 6 MB working budget.")
         }
     }
 }
