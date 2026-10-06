@@ -311,10 +311,15 @@ private fun Hero(account: Account, onRenew: () -> Unit) {
     val colors = AppTheme.colors
     val on = colors.onHero
     val whiteText = on == Color.White
-    val total = maxOf(1, ceil(account.plan?.validityDays ?: 30.0).toInt())
     val days = (account.daysRemaining ?: 0).coerceAtLeast(0)
+    // A renewal stacks onto the running plan, so days left can exceed one
+    // plan's length; the ring is then simply full.
+    val total = maxOf(1, ceil(account.plan?.validityDays ?: 30.0).toInt(), days)
     val (statusText, dot) = when {
-        account.status == "active" && days in 1..3 -> stringResource(R.string.status_renew_soon) to Color(0xFFFBBF24)
+        // "Renew soon" follows the server's renewal window, which is shorter
+        // than three days on short plans; a fixed 1..3 days said it right
+        // after a daily plan was bought, beside a greyed-out button.
+        account.status == "active" && days > 0 && account.renewable -> stringResource(R.string.status_renew_soon) to Color(0xFFFBBF24)
         account.status == "active" && days > 0 -> stringResource(R.string.status_active) to Color(0xFF4ADE80)
         account.status == "suspended" -> stringResource(R.string.status_suspended) to Color(0xFFF87171)
         account.status == "inactive" -> stringResource(R.string.status_inactive) to Color(0xFF94A3B8)
