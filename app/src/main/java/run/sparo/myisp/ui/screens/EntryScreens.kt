@@ -57,7 +57,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.heightIn
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
+import run.sparo.myisp.update.ForcedUpdate
 import run.sparo.myisp.AppConfig
 import run.sparo.myisp.AppContainer
 import run.sparo.myisp.ui.AppState
@@ -233,10 +236,33 @@ fun SignInScreen(state: AppState, app: AppContainer, vm: AppViewModel) {
     }
 }
 
-/** The ISP turned the app off, or this build is too old. The web portal always works. */
+/**
+ * The ISP turned the app off, or this build is too old. A too-old build
+ * offers its update right here; the web portal always works as well.
+ */
 @Composable
-fun UnavailableScreen(phase: Phase.Unavailable) {
+fun UnavailableScreen(phase: Phase.Unavailable, state: AppState, app: AppContainer) {
     val context = LocalContext.current
+    val provider = state.provider
+    if (phase.outdated && app.updates.enabled && provider != null) {
+        val update by app.updates.state.collectAsStateWithLifecycle()
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding().navigationBarsPadding()) {
+            Text(
+                phase.message,
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
+            )
+            ForcedUpdate(app.updates, update, provider.name, logo = { ProviderLogo(provider, app, 40.dp) })
+            phase.portalUrl?.let { url ->
+                TextButton(
+                    onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).heightIn(min = 48.dp),
+                ) { Text("Open the web portal") }
+            }
+        }
+        return
+    }
     EntryColumn {
         Text(if (phase.outdated) "Update the app" else "Not available in the app", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Text(phase.message, textAlign = TextAlign.Center)

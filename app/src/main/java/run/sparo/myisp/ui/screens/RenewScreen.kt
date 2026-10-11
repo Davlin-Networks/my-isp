@@ -225,7 +225,7 @@ class RenewVm(private val app: AppContainer) : ViewModel() {
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RenewSheet(state: AppState, app: AppContainer, appVm: AppViewModel, onClose: () -> Unit) {
+fun RenewSheet(state: AppState, app: AppContainer, appVm: AppViewModel, onClose: () -> Unit, preferredPlanId: Long? = null) {
     val vm: RenewVm = viewModel { RenewVm(app) }
     val renew by vm.state.collectAsStateWithLifecycle()
     var confirmLeave by remember { mutableStateOf(false) }
@@ -260,7 +260,7 @@ fun RenewSheet(state: AppState, app: AppContainer, appVm: AppViewModel, onClose:
                 verticalArrangement = Arrangement.spacedBy(Space.l),
             ) {
                 when (val stage = renew.stage) {
-                    PayStage.Choose, PayStage.Sending -> ChoosePlan(state, renew, sending = stage == PayStage.Sending) { plan, phone ->
+                    PayStage.Choose, PayStage.Sending -> ChoosePlan(state, renew, sending = stage == PayStage.Sending, preferredPlanId = preferredPlanId) { plan, phone ->
                         vm.pay(plan, phone, appVm::applyAccount)
                     }
                     is PayStage.Waiting -> Waiting(stage)
@@ -307,7 +307,7 @@ fun RenewSheet(state: AppState, app: AppContainer, appVm: AppViewModel, onClose:
 }
 
 @Composable
-private fun ChoosePlan(state: AppState, renew: RenewState, sending: Boolean, onPay: (Plan, String) -> Unit) {
+private fun ChoosePlan(state: AppState, renew: RenewState, sending: Boolean, preferredPlanId: Long? = null, onPay: (Plan, String) -> Unit) {
     val account = state.account
     val providerName = state.provider?.name.orEmpty()
     val colors = AppTheme.colors
@@ -325,7 +325,9 @@ private fun ChoosePlan(state: AppState, renew: RenewState, sending: Boolean, onP
     }
     LaunchedEffect(listed) {
         if (selected == null || listed.none { it.id == selected }) {
-            selected = (listed.firstOrNull { it.id == currentId } ?: listed.firstOrNull())?.id
+            // A promotion opened this sheet: start on its plan, when it may be chosen.
+            val preferred = listed.firstOrNull { it.id == preferredPlanId && !(locked && it.id != currentId) }
+            selected = (preferred ?: listed.firstOrNull { it.id == currentId } ?: listed.firstOrNull())?.id
         }
     }
 

@@ -245,3 +245,21 @@ data class TicketsMeta(
     val categories: Map<String, String> = emptyMap(),
     @SerialName("can_open") val canOpen: Boolean = true,
 )
+
+/**
+ * One of the ISP's promotions for Home (docs/home-ads-plan.md). [action]
+ * "plan" opens the Renew sheet on [packageId], "link" opens [linkUrl],
+ * anything else is a picture. Unknown actions are treated as a picture, so
+ * the server can add one without breaking an installed app.
+ */
+@Immutable
+@Serializable
+data class Promo(
+    val id: Long,
+    @SerialName("image_url") val imageUrl: String,
+    val title: String? = null,
+    val action: String = "none",
+    @SerialName("link_url") val linkUrl: String? = null,
+    @SerialName("package_id") val packageId: Long? = null,
+    @SerialName("updated_at") val updatedAt: String? = null,
+)

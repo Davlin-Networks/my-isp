@@ -21,6 +21,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
+import run.sparo.myisp.update.AppUpdate
 import java.io.IOException
 import java.net.URLEncoder
 import kotlin.coroutines.resume
@@ -84,6 +85,9 @@ class SparoApi(
 
     suspend fun account(): Account = request("GET", "/api/v1/my/account").data(Account.serializer())
 
+    /** The ISP's promotions for Home, in its order. Empty when it has none. */
+    suspend fun promos(): List<Promo> = request("GET", "/api/v1/my/ads").data(ListSerializer(Promo.serializer()))
+
     suspend fun usage(): Usage = request("GET", "/api/v1/my/usage").data(Usage.serializer())
 
     suspend fun sessions(page: Int): SessionPage =
@@ -135,6 +139,17 @@ class SparoApi(
             put("current", current)
             put("password", new)
         })
+    }
+
+    /**
+     * The newest published build for this package, or null when there is
+     * none - a 404 means "nothing to offer", not a fault. Needs no account,
+     * and the server answers it even for a build too old to use.
+     */
+    suspend fun latestRelease(packageName: String): AppUpdate? = try {
+        json.decodeFromJsonElement(AppUpdate.serializer(), request("GET", "/api/v1/app/latest?package=${enc(packageName)}"))
+    } catch (e: ApiException) {
+        if (e.status == 404) null else throw e
     }
 
     suspend fun logout() {
