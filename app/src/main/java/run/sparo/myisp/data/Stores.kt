@@ -116,6 +116,11 @@ class LocalStore(private val prefs: SharedPreferences) {
         get() = prefs.getString("last_username", null)
         set(value) = prefs.edit().putString("last_username", value).apply()
 
+    /** The wallet balance shown as dots, until the customer taps the eye again. */
+    var walletHidden: Boolean
+        get() = prefs.getBoolean("wallet_hidden", false)
+        set(value) = prefs.edit().putBoolean("wallet_hidden", value).apply()
+
     /** "Not now" on the promotions card: hidden until then (epoch ms). */
     var promosHiddenUntil: Long
         get() = prefs.getLong("promos_hidden_until", 0)

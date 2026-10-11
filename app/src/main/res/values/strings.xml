@@ -132,6 +132,38 @@
 
     <!-- Help -->
     <string name="help_contact">Contact %1$s</string>
+    <string name="help_title">Help</string>
+    <string name="help_here">%1$s support</string>
+    <string name="help_reach_us">Call or message us any time.</string>
+    <string name="help_quick_fixes">Quick fixes</string>
+    <string name="help_requests">Your requests</string>
+    <string name="help_new_request">New request</string>
+    <string name="help_limit">You have the most open requests allowed. Reply on one of them, or close one first.</string>
+    <string name="help_none">No requests yet. Something wrong with your connection? Try a quick fix, or tell us here.</string>
+    <string name="help_show_closed">Show closed (%1$d)</string>
+    <string name="help_hide_closed">Hide closed (%1$d)</string>
+    <string name="help_last_message">Last message %1$s</string>
+    <string name="fix_no_internet">No internet</string>
+    <string name="fix_slow">Slow internet</string>
+    <string name="fix_paid">Paid, not connected</string>
+    <string name="fix_still">Still not working? Tell us</string>
+    <string-array name="fix_no_internet_steps">
+        <item>Check that your plan is active on Home. An expired plan stops the internet until you renew.</item>
+        <item>Look at the router: its lights should be on, and the internet or WAN light should not be red.</item>
+        <item>Switch the router off at the plug, wait 30 seconds, and switch it back on. Give it two minutes.</item>
+        <item>Check that the cable into the router is pushed in firmly at both ends.</item>
+    </string-array>
+    <string-array name="fix_slow_steps">
+        <item>Open Usage. If you are past your plan\'s fair-usage amount, the speed is lower until it resets.</item>
+        <item>Restart the router: off at the plug for 30 seconds, then on again.</item>
+        <item>Move closer to the router, or use a cable. Walls and distance slow Wi-Fi down.</item>
+        <item>Pause big downloads and updates on other phones, TVs and laptops.</item>
+    </string-array>
+    <string-array name="fix_paid_steps">
+        <item>Open Payments and check that the payment is there. If it is, your plan is renewed.</item>
+        <item>Restart the router so it connects again with the renewed plan.</item>
+        <item>Still nothing after two minutes? Tell us here with the M-Pesa message, and we will check it.</item>
+    </string-array>
     <string name="help_open">Open %1$s</string>
     <string name="help_call">Call</string>
     <string name="help_whatsapp">WhatsApp</string>
@@ -152,13 +184,50 @@
     <string name="sign_out">Sign out</string>
     <string name="version">Version %1$s</string>
 
-    <!-- The ISP's promotions on Home (docs/home-ads-plan.md) -->
+    <!-- Receipts and statements as PDF -->
+    <string name="receipt_number">Receipt no.</string>
+    <string name="receipt_paid_word">Paid</string>
+    <string name="statement_button">Statement</string>
+    <string name="statement_title">Statement</string>
+    <string name="statement_body">Every payment to %1$s in a period, as a PDF you can share or keep.</string>
+    <string name="statement_this_month">This month</string>
+    <string name="statement_three_months">Last 3 months</string>
+    <string name="statement_this_year">This year</string>
+    <string name="statement_custom">Pick dates</string>
+    <string name="statement_use_dates">Use these dates</string>
+    <string name="statement_share_title">Share statement</string>
+    <string name="pdf_share">Share PDF</string>
+    <string name="pdf_share_image">Image</string>
+    <string name="pdf_save">Save</string>
+    <string name="pdf_saved">Saved to Downloads</string>
+    <string name="pdf_amount_paid">Amount paid</string>
+    <string name="pdf_date">Date</string>
+    <string name="pdf_customer">Customer</string>
+    <string name="pdf_username">Username</string>
+    <string name="pdf_account_no">Account no.</string>
+    <string name="pdf_amount">Amount</string>
+    <string name="pdf_total">Total</string>
+    <string name="pdf_total_paid">Total paid</string>
+    <string name="pdf_generated">Generated</string>
+    <string name="pdf_no_payments">No payments in this period.</string>
+    <string name="pdf_thanks">Thank you for staying connected.</string>
+    <string name="pdf_issued_by">Issued in the %1$s app</string>
+    <string name="pdf_page_of">Page %1$d of %2$d</string>
+
+    <!-- Home: quick actions, the Renew pill, hiding the balance -->
+    <string name="quick_renew">Renew</string>
+    <string name="quick_paybill">Account no.</string>
+    <string name="home_renew_pill">Renew now</string>
+    <string name="wallet_hide">Hide balance</string>
+    <string name="wallet_show">Show balance</string>
+
+    <!-- The ISP's promotions on Home -->
     <string name="promo_from">From %1$s</string>
     <string name="promo_a11y">Promotion from %1$s: %2$s</string>
     <string name="promo_more">More about these promotions</string>
     <string name="promo_hide">Hide promotions for a week</string>
 
-    <!-- In-app updates (docs/self-update-plan.md) -->
+    <!-- In-app updates -->
     <string name="update_title">A new version of %1$s</string>
     <string name="update_versions">%1$s → %2$s</string>
     <string name="update_size">%1$s · under a minute</string>

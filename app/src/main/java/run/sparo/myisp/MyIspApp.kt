@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import okhttp3.Cache
 import okhttp3.OkHttpClient
 import run.sparo.myisp.data.ApiException
+import run.sparo.myisp.R
 import run.sparo.myisp.data.LocalStore
 import run.sparo.myisp.data.SparoApi
 import run.sparo.myisp.data.TokenStore
@@ -31,6 +32,9 @@ class MyIspApp : Application() {
 /** Everything the app shares, made once. No DI framework: there are a handful of things. */
 class AppContainer(context: Context) {
     private val prefs = context.getSharedPreferences("myisp", Context.MODE_PRIVATE)
+
+    /** This build's name - "My ISP", or the ISP's own for a branded build. */
+    val appName: String = context.getString(R.string.app_name)
 
     val tokens = TokenStore(prefs)
     val store = LocalStore(prefs)
