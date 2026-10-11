@@ -27,7 +27,7 @@ val appName = prop("appName", "My ISP")
 val appIdSuffix = prop("appIdSuffix", "")
 
 /*
- * In-app updates (docs/self-update-plan.md): the app asks its Sparo server
+ * In-app updates: the app asks its Sparo server
  * for newer builds of its own package and installs them through Android's
  * installer. -PselfUpdate=false builds without it, for stores that do the
  * updating themselves.

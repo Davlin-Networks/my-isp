@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -61,7 +62,7 @@ import run.sparo.myisp.ui.theme.AppTheme
 import run.sparo.myisp.ui.theme.Radius
 
 /*
- * The ISP's promotions on Home (docs/home-ads-plan.md): one card below the
+ * The ISP's promotions on Home: one card below the
  * wallet, never in the Renew sheet or above the plan. Its own promotions,
  * labelled as such - no ad network, no tracking.
  */
@@ -148,8 +149,11 @@ fun PromoCarousel(promos: List<Promo>, providerName: String, app: AppContainer, 
         Box {
             HorizontalPager(
                 state = pager,
-                pageSpacing = 12.dp,
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Radius.m)),
+                pageSpacing = 10.dp,
+                // The next card peeks in at the edge: there is more to swipe,
+                // said without dots.
+                contentPadding = if (promos.size > 1) PaddingValues(end = 28.dp) else PaddingValues(0.dp),
+                modifier = Modifier.fillMaxWidth(),
             ) { page ->
                 val promo = promos[page]
                 val tap = PromoTap.of(promo)

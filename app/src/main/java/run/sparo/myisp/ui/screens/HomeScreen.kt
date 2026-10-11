@@ -48,6 +48,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.layout.boundsInParent
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.heading
 import androidx.compose.foundation.layout.heightIn
@@ -195,7 +204,7 @@ fun SignedInScreen(state: AppState, app: AppContainer, vm: AppViewModel) {
                         onUpdatedSeen = app.updates::acknowledgeUpdated,
                     )
                     Tab.Usage -> UsageTab(usageVm, state)
-                    Tab.Payments -> PaymentsTab(app, provider)
+                    Tab.Payments -> PaymentsTab(app, provider, state.account)
                     Tab.Help -> HelpTab(state, supportVm, onNew = { route = Route.NEW_TICKET }, onOpen = { route = Route.ticket(it) })
                 }
             }
@@ -346,8 +355,10 @@ private fun HomeTab(
         },
         modifier = Modifier.fillMaxSize(),
     ) {
+        val scroll = rememberScrollState()
+        var heroBottom by remember { mutableIntStateOf(Int.MAX_VALUE) }
         Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 12.dp),
+            Modifier.fillMaxSize().verticalScroll(scroll).padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(Space.m),
         ) {
             if (state.refreshError != null && state.accountAt > 0) {
@@ -359,20 +370,35 @@ private fun HomeTab(
             }
             update.justUpdated?.let { JustUpdatedChip(it, onOpen = onWhatsNew, onDone = onUpdatedSeen) }
 
-            // The ISP's promotions, at the top of Home (preview).
-            val promos by promoVm.promos.collectAsStateWithLifecycle()
-            val promosHidden by promoVm.hidden.collectAsStateWithLifecycle()
-            if (!promosHidden) {
-                PromoCarousel(promos, provider.name, app, onHide = promoVm::hideForAWeek, onTap = { tap ->
-                    when (tap) {
-                        is PromoTap.Plan -> onRenewPlan(tap.packageId)
-                        is PromoTap.Link -> openUrl(context, tap.url)
-                        PromoTap.None -> Unit
-                    }
-                })
+            // The ISP's promotions lead Home while the plan is healthy. When
+            // money is due - renew soon, expired, suspended - the plan and
+            // Renew come first and the promotions wait below the wallet.
+            val promosFirst = account.status == "active" && (account.daysRemaining ?: 0) > 0 && !account.renewable
+            val promos: @Composable () -> Unit = {
+                val promos by promoVm.promos.collectAsStateWithLifecycle()
+                val promosHidden by promoVm.hidden.collectAsStateWithLifecycle()
+                if (!promosHidden) {
+                    PromoCarousel(promos, provider.name, app, onHide = promoVm::hideForAWeek, onTap = { tap ->
+                        when (tap) {
+                            is PromoTap.Plan -> onRenewPlan(tap.packageId)
+                            is PromoTap.Link -> openUrl(context, tap.url)
+                            PromoTap.None -> Unit
+                        }
+                    })
+                }
+            }
+            if (promosFirst) promos()
+
+            Box(Modifier.onGloballyPositioned { heroBottom = it.boundsInParent().bottom.toInt() }) {
+                Hero(account, onRenew)
             }
 
-            Hero(account, onRenew)
+            QuickActions(
+                provider = provider,
+                accountRef = account.accountRef,
+                renewable = account.renewable,
+                onRenew = onRenew,
+            )
 
             // The live connection: the one thing customers open the app to check.
             val c = usage.value?.connection
@@ -417,7 +443,11 @@ private fun HomeTab(
             val wallet = account.wallet?.takeIf { it.enabled && provider.content.payments.showWallet }
             val paybill = provider.content.payments.paybill?.takeIf { account.accountRef != null }
             if (wallet != null) {
-                WalletCard(kes(wallet.balance), account.username, provider.name)
+                var hidden by rememberSaveable { mutableStateOf(app.store.walletHidden) }
+                WalletCard(kes(wallet.balance), account.username, provider.name, hidden) {
+                    hidden = !hidden
+                    app.store.walletHidden = hidden
+                }
             }
             if (paybill != null) {
                 val copyLabel = stringResource(R.string.home_copy_account)
@@ -428,8 +458,102 @@ private fun HomeTab(
                 )
             }
 
+            if (!promosFirst) promos()
+
             provider.content.announcement?.let { Banner(it.text, it.tone) }
-            Spacer(Modifier.height(Space.l))
+            // Room for the Renew pill, so it never covers the last card.
+            Spacer(Modifier.height(if (account.renewable) 72.dp else Space.l))
+        }
+
+        // Once the plan card has scrolled away, Renew follows as a pill -
+        // only while renewal is open.
+        val showPill = account?.renewable == true && scroll.value > heroBottom
+        AnimatedVisibility(
+            visible = showPill,
+            enter = fadeIn() + slideInVertically { it },
+            exit = fadeOut() + slideOutVertically { it },
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp),
+        ) {
+            Row(
+                Modifier
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary)
+                    .clickable(role = Role.Button, onClick = onRenew)
+                    .heightIn(min = 48.dp)
+                    .padding(horizontal = 22.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Space.s),
+            ) {
+                Icon(AppIcons.Refresh, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(18.dp))
+                Text(stringResource(R.string.home_renew_pill), color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+/**
+ * One tap for what people open the app to do, beyond reading the plan:
+ * renew, the paybill account number, and calling or messaging the ISP.
+ * Each shows only when the ISP has set it up.
+ */
+@Composable
+private fun QuickActions(provider: Provider, accountRef: String?, renewable: Boolean, onRenew: () -> Unit) {
+    val context = LocalContext.current
+    val colors = AppTheme.colors
+    val phone = provider.branding.contactPhone?.takeIf { it.isNotBlank() }
+    val paybill = provider.content.payments.paybill?.takeIf { accountRef != null }
+    val copyLabel = stringResource(R.string.home_copy_account)
+    val copied = stringResource(R.string.copied)
+
+    data class Action(val label: String, val icon: ImageVector, val tint: Color?, val enabled: Boolean, val onClick: () -> Unit)
+
+    val actions = buildList {
+        add(Action(stringResource(R.string.quick_renew), AppIcons.Refresh, null, renewable, onRenew))
+        if (paybill != null && accountRef != null) {
+            add(Action(stringResource(R.string.quick_paybill), AppIcons.Copy, null, true) {
+                copy(context, copyLabel, accountRef)
+                android.widget.Toast.makeText(context, copied, android.widget.Toast.LENGTH_SHORT).show()
+            })
+        }
+        if (phone != null) {
+            val digits = phone.filter(Char::isDigit)
+            val wa = if (digits.startsWith("0")) "254" + digits.drop(1) else digits
+            add(Action(stringResource(R.string.help_call), AppIcons.Phone, null, true) { openUrl(context, "tel:$phone") })
+            // WhatsApp's mark keeps its own green: it is recognised by it.
+            add(Action(stringResource(R.string.help_whatsapp), AppIcons.WhatsApp, Color(0xFF25D366), true) { openUrl(context, "https://wa.me/$wa") })
+        }
+    }
+    if (actions.size < 2) return
+
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(Radius.m)).background(MaterialTheme.colorScheme.surfaceContainer).padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+    ) {
+        actions.forEach { a ->
+            Column(
+                Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(Radius.s))
+                    .then(if (a.enabled) Modifier.clickable(role = Role.Button, onClick = a.onClick) else Modifier)
+                    .padding(vertical = 6.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                val tint = a.tint ?: MaterialTheme.colorScheme.primary
+                Box(
+                    Modifier.size(48.dp).clip(CircleShape).background(if (a.enabled) colors.soft(tint) else colors.line),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(a.icon, contentDescription = null, tint = if (a.enabled) tint else colors.muted, modifier = Modifier.size(22.dp))
+                }
+                Text(
+                    a.label,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (a.enabled) MaterialTheme.colorScheme.onSurface else colors.muted,
+                    maxLines = 1,
+                )
+            }
         }
     }
 }
@@ -457,25 +581,25 @@ private fun Hero(account: Account, onRenew: () -> Unit) {
     val buttonText = textOn(colors.heroStart, on)
 
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(Radius.l)).background(colors.hero).padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(Radius.l)).background(colors.hero).padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             ProgressRing(
                 fraction = days.toFloat() / total,
                 color = on,
                 track = on.copy(alpha = if (whiteText) 0.25f else 0.18f),
-                size = 104.dp,
-                stroke = 9.dp,
+                size = 76.dp,
+                stroke = 7.dp,
                 label = stringResource(R.string.ring_label, days, total),
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("$days", color = on, fontSize = 34.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 36.sp)
+                    Text("$days", color = on, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 26.sp)
                     Text(pluralStringResource(R.plurals.days_left, days), color = on.copy(alpha = 0.85f), style = MaterialTheme.typography.labelSmall)
                 }
             }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(account.plan?.name ?: "—", color = on, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(account.plan?.name ?: "—", color = on, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, maxLines = 1)
                 account.plan?.let { plan ->
                     Text(
                         stringResource(R.string.plan_meta, plan.rateLimit ?: "", run.sparo.myisp.ui.validity(plan.validityDays)),
@@ -503,8 +627,8 @@ private fun Hero(account: Account, onRenew: () -> Unit) {
         Box(
             Modifier
                 .fillMaxWidth()
-                .height(52.dp)
-                .clip(RoundedCornerShape(15.dp))
+                .height(44.dp)
+                .clip(RoundedCornerShape(13.dp))
                 .background(if (account.renewable) on else on.copy(alpha = 0.18f))
                 .then(if (account.renewable) Modifier.clickable(role = Role.Button, onClick = onRenew) else Modifier)
                 .semantics { contentDescription = label },
@@ -552,7 +676,7 @@ private fun StatTile(
  * here is decoration, not state, so it never stands in for a status colour.
  */
 @Composable
-private fun WalletCard(amount: String, holder: String, issuer: String) {
+private fun WalletCard(amount: String, holder: String, issuer: String, hidden: Boolean, onToggle: () -> Unit) {
     val gold = Color(0xFFE8C77A)
     val goldDim = Color(0xFFCDB27A)
     val shape = RoundedCornerShape(16.dp)
@@ -562,7 +686,6 @@ private fun WalletCard(amount: String, holder: String, issuer: String) {
             .clip(shape)
             .background(Brush.linearGradient(listOf(Color(0xFF1A1712), Color(0xFF2B251B), Color(0xFF4A3F2B))))
             .border(1.dp, Brush.linearGradient(listOf(gold.copy(alpha = 0.55f), gold.copy(alpha = 0.12f), gold.copy(alpha = 0.4f))), shape)
-            .semantics(mergeDescendants = true) {},
     ) {
         // A soft diagonal sheen, as light catches a card.
         Box(
@@ -577,7 +700,25 @@ private fun WalletCard(amount: String, holder: String, issuer: String) {
                 Spacer(Modifier.weight(1f))
                 Text(stringResource(R.string.home_wallet_available), color = goldDim, style = MaterialTheme.typography.labelSmall)
             }
-            Text(amount, color = gold, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 26.sp, modifier = Modifier.padding(top = 4.dp))
+            // Hide the balance, as M-Pesa does, for when someone is looking on.
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Space.s)) {
+                Text(
+                    if (hidden) "KES ••••" else amount,
+                    color = gold,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    lineHeight = 26.sp,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+                val toggleLabel = stringResource(if (hidden) R.string.wallet_show else R.string.wallet_hide)
+                Box(
+                    Modifier.size(40.dp).clip(CircleShape).clickable(role = Role.Button, onClickLabel = toggleLabel, onClick = onToggle)
+                        .semantics { contentDescription = toggleLabel },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(if (hidden) AppIcons.Eye else AppIcons.EyeOff, contentDescription = null, tint = goldDim, modifier = Modifier.size(18.dp))
+                }
+            }
             Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text(holder.uppercase(), color = Color(0xFFF1E6CF), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.1.sp, maxLines = 1)
                 Text(issuer.uppercase(), color = goldDim, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.1.sp, maxLines = 1)

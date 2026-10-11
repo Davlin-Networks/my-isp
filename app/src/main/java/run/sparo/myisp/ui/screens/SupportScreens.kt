@@ -1,5 +1,23 @@
 package run.sparo.myisp.ui.screens
 
+import androidx.compose.runtime.remember
+import run.sparo.myisp.ui.theme.Space
+import run.sparo.myisp.ui.theme.Radius
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringArrayResource
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.height
@@ -137,56 +155,231 @@ fun HelpTab(state: AppState, vm: SupportVm, onNew: () -> Unit, onOpen: (Long) ->
     val support by vm.state.collectAsStateWithLifecycle()
     val provider = state.provider ?: return
     val context = LocalContext.current
+    val colors = AppTheme.colors
+    var fix by remember { mutableStateOf<QuickFix?>(null) }
+    var showClosed by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(Unit) { vm.load() }
 
     PullToRefreshBox(isRefreshing = support.loading && support.list != null, onRefresh = vm::load, modifier = Modifier.fillMaxSize()) {
         Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(Space.l),
         ) {
-            SectionCard {
-                Text(stringResource(R.string.help_contact, provider.name), style = MaterialTheme.typography.titleMedium)
-                provider.content.supportHours?.let { Muted(stringResource(R.string.help_open, it)) }
-                provider.branding.contactPhone?.let { phone ->
+            Text(stringResource(R.string.help_title), style = MaterialTheme.typography.headlineMedium)
+
+            // Talk to a person: the ISP's own card, on its gradient.
+            Column(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(Radius.l)).background(colors.hero).padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(Space.m),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Space.m)) {
+                    Box(Modifier.size(44.dp).clip(CircleShape).background(colors.onHero.copy(alpha = 0.16f)), contentAlignment = Alignment.Center) {
+                        Icon(AppIcons.Headset, contentDescription = null, tint = colors.onHero, modifier = Modifier.size(22.dp))
+                    }
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(stringResource(R.string.help_here, provider.name), color = colors.onHero, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
+                        Text(
+                            provider.content.supportHours?.let { stringResource(R.string.help_open, it) } ?: stringResource(R.string.help_reach_us),
+                            color = colors.onHero.copy(alpha = 0.8f),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
+                provider.branding.contactPhone?.takeIf { it.isNotBlank() }?.let { phone ->
                     val digits = phone.filter(Char::isDigit)
                     val wa = if (digits.startsWith("0")) "254" + digits.drop(1) else digits
-                    Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        ContactButton(stringResource(R.string.help_call), AppIcons.Phone, MaterialTheme.colorScheme.primary, Modifier.weight(1f)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        HeroAction(stringResource(R.string.help_call), AppIcons.Phone, colors.onHero, colors.onHero.copy(alpha = 0.16f), Modifier.weight(1f)) {
                             openUrl(context, "tel:$phone")
                         }
                         // WhatsApp's mark keeps its own green: it is recognised by it.
-                        ContactButton(stringResource(R.string.help_whatsapp), AppIcons.WhatsApp, Color(0xFF25D366), Modifier.weight(1f)) {
+                        HeroAction(stringResource(R.string.help_whatsapp), AppIcons.WhatsApp, Color.White, Color(0xFF25D366), Modifier.weight(1f)) {
                             openUrl(context, "https://wa.me/$wa")
                         }
                     }
                 }
             }
 
+            // Fix it yourself first: the three things people ask about most.
+            SectionLabel(stringResource(R.string.help_quick_fixes))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                QuickFix.entries.forEach { q ->
+                    Column(
+                        Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(Radius.m))
+                            .background(MaterialTheme.colorScheme.surfaceContainer)
+                            .clickable(role = Role.Button) { fix = q }
+                            .padding(horizontal = 8.dp, vertical = 14.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(colors.soft(q.tint())), contentAlignment = Alignment.Center) {
+                            Icon(q.icon(), contentDescription = null, tint = q.tint(), modifier = Modifier.size(20.dp))
+                        }
+                        Text(
+                            stringResource(q.title),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            textAlign = TextAlign.Center,
+                            minLines = 2,
+                            maxLines = 2,
+                        )
+                    }
+                }
+            }
+
+            // Requests: the conversation with the ISP, open ones first.
             val list = support.list
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                SectionLabel(stringResource(R.string.help_requests), Modifier.weight(1f))
+                if (list?.canOpen == true) {
+                    Row(
+                        Modifier.clip(CircleShape).background(colors.brandSoft).clickable(role = Role.Button, onClick = onNew)
+                            .heightIn(min = 40.dp).padding(horizontal = 14.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Icon(AppIcons.Plus, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                        Text(stringResource(R.string.help_new_request), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
             when {
                 list == null && support.listError != null -> ErrorBox(support.listError!!, vm::load)
                 list == null -> Loading()
                 else -> {
-                    if (list.canOpen) {
-                        PrimaryButton("New request", onNew)
-                    } else {
-                        Muted("You have the most open requests allowed. Reply on one of them, or close one first.")
-                    }
+                    if (!list.canOpen) Muted(stringResource(R.string.help_limit))
+                    val (closed, active) = list.tickets.partition { it.status == "closed" }
                     if (list.tickets.isEmpty()) {
-                        Muted("No requests yet. Something wrong with your connection? Tell us here.")
-                    }
-                    list.tickets.forEach { t ->
-                        SectionCard(Modifier.clickable { onOpen(t.id) }) {
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                Text(t.title, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                                StatusChip(t.status)
-                            }
-                            Muted("Last message ${agoIso(t.lastMessageAt)}")
+                        Column(
+                            Modifier.fillMaxWidth().clip(RoundedCornerShape(Radius.m)).background(MaterialTheme.colorScheme.surfaceContainer).padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Icon(AppIcons.Help, contentDescription = null, tint = colors.muted, modifier = Modifier.size(28.dp))
+                            Text(stringResource(R.string.help_none), style = MaterialTheme.typography.bodyMedium, color = colors.muted, textAlign = TextAlign.Center)
                         }
+                    }
+                    active.forEach { t -> TicketRow(t, dim = false) { onOpen(t.id) } }
+                    if (closed.isNotEmpty()) {
+                        TextButton(onClick = { showClosed = !showClosed }, modifier = Modifier.heightIn(min = 44.dp)) {
+                            Text(
+                                stringResource(if (showClosed) R.string.help_hide_closed else R.string.help_show_closed, closed.size),
+                                color = colors.muted,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                        if (showClosed) closed.forEach { t -> TicketRow(t, dim = true) { onOpen(t.id) } }
                     }
                 }
             }
+            Spacer(Modifier.height(Space.l))
         }
+    }
+
+    fix?.let { q -> QuickFixSheet(q, onClose = { fix = null }, onAsk = { fix = null; onNew() }) }
+}
+
+/** The three things customers ask about most, each with steps to try first. */
+private enum class QuickFix(val title: Int, val steps: Int) {
+    NoInternet(R.string.fix_no_internet, R.array.fix_no_internet_steps),
+    Slow(R.string.fix_slow, R.array.fix_slow_steps),
+    PaidNotConnected(R.string.fix_paid, R.array.fix_paid_steps);
+
+    fun icon(): ImageVector = when (this) {
+        NoInternet -> AppIcons.Wifi
+        Slow -> AppIcons.Usage
+        PaidNotConnected -> AppIcons.Wallet
+    }
+
+    @Composable
+    fun tint(): Color = when (this) {
+        NoInternet -> AppTheme.colors.critical
+        Slow -> AppTheme.colors.warning
+        PaidNotConnected -> AppTheme.colors.good
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun QuickFixSheet(fix: QuickFix, onClose: () -> Unit, onAsk: () -> Unit) {
+    val colors = AppTheme.colors
+    val steps = stringArrayResource(fix.steps)
+    ModalBottomSheet(
+        onDismissRequest = onClose,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+    ) {
+        Column(
+            Modifier.navigationBarsPadding().verticalScroll(rememberScrollState()).padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(Space.l),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Space.m)) {
+                Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(colors.soft(fix.tint())), contentAlignment = Alignment.Center) {
+                    Icon(fix.icon(), contentDescription = null, tint = fix.tint(), modifier = Modifier.size(20.dp))
+                }
+                Text(stringResource(fix.title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
+            }
+            steps.forEachIndexed { i, step ->
+                Row(horizontalArrangement = Arrangement.spacedBy(Space.m)) {
+                    Box(Modifier.size(26.dp).clip(CircleShape).background(colors.brandSoft), contentAlignment = Alignment.Center) {
+                        Text("${i + 1}", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
+                    }
+                    Text(step, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f).padding(top = 3.dp))
+                }
+            }
+            PrimaryButton(stringResource(R.string.fix_still), onAsk)
+        }
+    }
+}
+
+@Composable
+private fun SectionLabel(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text.uppercase(),
+        style = MaterialTheme.typography.labelMedium,
+        color = AppTheme.colors.muted,
+        letterSpacing = 1.sp,
+        modifier = modifier.padding(start = 4.dp).semantics { heading() },
+    )
+}
+
+@Composable
+private fun TicketRow(t: Ticket, dim: Boolean, onClick: () -> Unit) {
+    val colors = AppTheme.colors
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(Radius.m))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .clickable(role = Role.Button, onClick = onClick)
+            .alpha(if (dim) 0.7f else 1f)
+            .padding(horizontal = 14.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Space.m),
+    ) {
+        Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(colors.brandSoft), contentAlignment = Alignment.Center) {
+            Icon(AppIcons.Help, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(t.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(stringResource(R.string.help_last_message, agoIso(t.lastMessageAt)), style = MaterialTheme.typography.bodySmall, color = colors.muted, maxLines = 1)
+        }
+        StatusChip(t.status)
+    }
+}
+
+@Composable
+private fun HeroAction(label: String, icon: ImageVector, ink: Color, fill: Color, modifier: Modifier, onClick: () -> Unit) {
+    Row(
+        modifier.clip(RoundedCornerShape(14.dp)).background(fill).clickable(role = Role.Button, onClick = onClick).heightIn(min = 48.dp).padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        Icon(icon, contentDescription = null, tint = ink, modifier = Modifier.size(18.dp))
+        Text("  $label", color = ink, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
     }
 }
 

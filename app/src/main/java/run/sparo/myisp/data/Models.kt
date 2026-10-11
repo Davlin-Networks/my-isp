@@ -247,7 +247,7 @@ data class TicketsMeta(
 )
 
 /**
- * One of the ISP's promotions for Home (docs/home-ads-plan.md). [action]
+ * One of the ISP's promotions for Home. [action]
  * "plan" opens the Renew sheet on [packageId], "link" opens [linkUrl],
  * anything else is a picture. Unknown actions are treated as a picture, so
  * the server can add one without breaking an installed app.

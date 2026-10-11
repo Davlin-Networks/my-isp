@@ -5,7 +5,7 @@ import org.junit.Test
 import run.sparo.myisp.data.Promo
 import run.sparo.myisp.ui.screens.PromoTap
 
-/** What tapping one of the ISP's promotions does (docs/home-ads-plan.md). */
+/** What tapping one of the ISP's promotions does. */
 class PromoTapTest {
     private fun promo(action: String, link: String? = null, plan: Long? = null) =
         Promo(1, "https://x.test/a.webp", "Upgrade", action, link, plan)

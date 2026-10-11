@@ -55,8 +55,8 @@ data class UpdateState(
 }
 
 /**
- * Finds, downloads, verifies and installs a newer build of this app
- * (docs/self-update-plan.md). Lives as long as the process, not a screen:
+ * Finds, downloads, verifies and installs a newer build of this app.
+ * Lives as long as the process, not a screen:
  * a download carries on while the customer uses the app, and is picked up
  * again if the app was closed mid-way.
  */
