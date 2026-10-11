@@ -8,7 +8,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
-/** The updater's decisions, without a phone (docs/self-update-plan.md). */
+/** The updater's decisions, without a phone. */
 class UpdateLogicTest {
     private fun update(code: Int, minSdk: Int? = null) =
         AppUpdate(code, "1.$code.0", minSdk, "https://example.test/$code.apk", "ab", 1_600_000)

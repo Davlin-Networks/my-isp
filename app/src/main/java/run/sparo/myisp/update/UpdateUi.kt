@@ -81,7 +81,7 @@ import run.sparo.myisp.ui.theme.Space
 import java.util.Locale
 
 /*
- * The updater's screens, in the app's own style (docs/self-update-plan.md):
+ * The updater's screens, in the app's own style:
  * the ISP's colours and logo, the ring, a sheet over Home. The logo in the
  * top bar is where an update lives - a dot while one waits, a ring while it
  * downloads - so the customer keeps using the app throughout.
