@@ -83,6 +83,48 @@ fun ProgressRing(
     }
 }
 
+/**
+ * The customer, as initials in a ring of the ISP's gradient - where the
+ * account and its settings live. [online] adds a presence dot; null shows
+ * none. The words go in [label], so the dot never carries meaning alone.
+ */
+@Composable
+fun Avatar(
+    name: String,
+    size: Dp,
+    ring: List<Color>,
+    fill: Color,
+    ink: Color,
+    label: String,
+    modifier: Modifier = Modifier,
+    online: Boolean? = null,
+    presence: Color = Color.Unspecified,
+    cutout: Color = Color.Unspecified,
+) {
+    val initials = remember(name) {
+        name.split(Regex("\\s+")).filter { it.isNotBlank() }.take(2).joinToString("") { it.take(1).uppercase() }.ifBlank { "?" }
+    }
+    Box(modifier.size(size).semantics { contentDescription = label }, contentAlignment = Alignment.Center) {
+        Canvas(Modifier.fillMaxSize()) {
+            val w = (size.toPx() * 0.055f).coerceAtLeast(2.dp.toPx())
+            drawCircle(androidx.compose.ui.graphics.Brush.sweepGradient(ring + ring.first()), radius = this.size.minDimension / 2 - w / 2, style = Stroke(w))
+            drawCircle(fill, radius = this.size.minDimension / 2 - w * 1.9f)
+            if (online != null && presence != Color.Unspecified) {
+                val r = this.size.minDimension * 0.13f
+                val c = Offset(this.size.width - r * 1.05f, this.size.height - r * 1.05f)
+                drawCircle(cutout, r + 2.dp.toPx(), c)
+                drawCircle(presence, r, c)
+            }
+        }
+        androidx.compose.material3.Text(
+            initials,
+            color = ink,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
+            fontSize = androidx.compose.ui.unit.TextUnit(size.value * 0.36f, androidx.compose.ui.unit.TextUnitType.Sp),
+        )
+    }
+}
+
 /** "Online": a dot with a ring breathing out of it. */
 @Composable
 fun PulseDot(color: Color, modifier: Modifier = Modifier) {

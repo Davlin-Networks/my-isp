@@ -13,6 +13,8 @@ import run.sparo.myisp.data.ApiException
 import run.sparo.myisp.data.LocalStore
 import run.sparo.myisp.data.SparoApi
 import run.sparo.myisp.data.TokenStore
+import run.sparo.myisp.update.UpdateManager
+import run.sparo.myisp.update.UpdateStore
 import java.io.File
 import java.util.concurrent.TimeUnit
 
@@ -26,7 +28,7 @@ class MyIspApp : Application() {
     }
 }
 
-/** Everything the app shares, made once. No DI framework: there are five things. */
+/** Everything the app shares, made once. No DI framework: there are a handful of things. */
 class AppContainer(context: Context) {
     private val prefs = context.getSharedPreferences("myisp", Context.MODE_PRIVATE)
 
@@ -56,8 +58,17 @@ class AppContainer(context: Context) {
 
     val api = SparoApi(http, AppConfig.baseUrl, sessionEnds)
 
-    /** Logos, decoded once per run. */
-    val images = LruCache<String, Bitmap>(8)
+    /**
+     * Logos and promotion images, decoded once per run. Bounded by memory,
+     * not count: a promotion is ~3 MB decoded, a logo a few KB. Evicted ones
+     * come back from the HTTP disk cache, not the network.
+     */
+    val images = object : LruCache<String, Bitmap>(24 * 1024 * 1024) {
+        override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount
+    }
+
+    /** Newer builds of this app: found, downloaded, verified, installed. */
+    val updates = UpdateManager(context, api, UpdateStore(prefs))
 }
 
 /**

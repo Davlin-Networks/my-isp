@@ -48,6 +48,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.heading
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -62,14 +65,15 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import run.sparo.myisp.AppConfig
 import run.sparo.myisp.AppContainer
-import run.sparo.myisp.BuildConfig
 import run.sparo.myisp.R
 import run.sparo.myisp.data.Account
 import run.sparo.myisp.data.ApiException
@@ -78,6 +82,7 @@ import run.sparo.myisp.ui.AppState
 import run.sparo.myisp.ui.AppViewModel
 import run.sparo.myisp.ui.ago
 import run.sparo.myisp.ui.bytes
+import run.sparo.myisp.ui.components.Avatar
 import run.sparo.myisp.ui.components.Banner
 import run.sparo.myisp.ui.components.Muted
 import run.sparo.myisp.ui.components.PrimaryButton
@@ -94,13 +99,20 @@ import run.sparo.myisp.ui.theme.Radius
 import run.sparo.myisp.ui.theme.Space
 import run.sparo.myisp.ui.theme.ThemeMode
 import run.sparo.myisp.ui.theme.textOn
+import run.sparo.myisp.update.AboutRow
+import run.sparo.myisp.update.JustUpdatedChip
+import run.sparo.myisp.update.UpdateLogoBadge
+import run.sparo.myisp.update.UpdateSheet
+import run.sparo.myisp.update.UpdateStage
+import run.sparo.myisp.update.UpdateState
+import run.sparo.myisp.update.WhatsNewSheet
 import kotlin.math.ceil
 
 private enum class Tab(val label: Int, val icon: () -> ImageVector) {
     Home(R.string.nav_home, { AppIcons.Home }),
     Usage(R.string.nav_usage, { AppIcons.Usage }),
     Payments(R.string.nav_payments, { AppIcons.Receipt }),
-    Help(R.string.nav_help, { AppIcons.Help }),
+    Help(R.string.nav_help, { AppIcons.Headset }),
 }
 
 /** Full-screen pages over the tabs. Saved as a string so it survives rotation. */
@@ -119,12 +131,43 @@ fun SignedInScreen(state: AppState, app: AppContainer, vm: AppViewModel) {
     var renewing by rememberSaveable { mutableStateOf(false) }
     val usageVm: UsageVm = viewModel { UsageVm(app) }
     val supportVm: SupportVm = viewModel { SupportVm(app) }
+    val promoVm: PromoVm = viewModel { PromoVm(app) }
+    // The plan a promotion asked to renew on, if one opened the sheet.
+    var renewPlan by rememberSaveable { mutableStateOf<Long?>(null) }
+    val update by app.updates.state.collectAsStateWithLifecycle()
+    var updateSheet by rememberSaveable { mutableStateOf(false) }
+    var whatsNew by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) { app.updates.checkIfDue() }
+
+    // An update never comes before money: not over the Renew sheet, another
+    // page, or a plan that has run out. It waits for a calm moment on Home.
+    val calm = tab == Tab.Home && route == Route.NONE && !renewing &&
+        state.account?.status == "active" && (state.account.daysRemaining ?: 0) > 0
+    LaunchedEffect(update.offersItself, calm) {
+        if (update.offersItself && calm) {
+            delay(1200)
+            updateSheet = true
+        }
+    }
+    // Downloaded and verified while the customer carried on: the sheet returns.
+    LaunchedEffect(update.stage is UpdateStage.Ready, calm) {
+        if (update.stage is UpdateStage.Ready && calm) updateSheet = true
+    }
 
     BackHandler(enabled = route != Route.NONE) { route = Route.NONE }
     BackHandler(enabled = route == Route.NONE && tab != Tab.Home) { tab = Tab.Home }
 
     when {
-        route == Route.SETTINGS -> return SettingsScreen(state, vm, onPassword = { route = Route.PASSWORD }, onClose = { route = Route.NONE })
+        route == Route.SETTINGS -> return SettingsScreen(
+            state, app, vm, update,
+            onPassword = { route = Route.PASSWORD },
+            onUpdate = {
+                route = Route.NONE
+                updateSheet = true
+            },
+            onClose = { route = Route.NONE },
+        )
         route == Route.PASSWORD -> return PasswordScreen(app, onClose = { route = Route.SETTINGS })
         route == Route.NEW_TICKET -> return NewTicketScreen(supportVm, onOpened = { route = Route.ticket(it) }, onClose = { route = Route.NONE })
         route.startsWith("ticket:") -> return TicketScreen(route.removePrefix("ticket:").toLong(), supportVm, onClose = { route = Route.NONE })
@@ -133,10 +176,24 @@ fun SignedInScreen(state: AppState, app: AppContainer, vm: AppViewModel) {
     val provider = state.provider ?: return
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(Modifier.fillMaxSize()) {
-            TopBar(provider, state, app, onSettings = { route = Route.SETTINGS })
+            val online = usageVm.state.collectAsStateWithLifecycle().value.value?.connection?.online
+            TopBar(provider, state, app, update, online, onUpdate = { updateSheet = true }, onSettings = { route = Route.SETTINGS })
             Box(Modifier.weight(1f)) {
                 when (tab) {
-                    Tab.Home -> HomeTab(state, usageVm, vm, onRenew = { renewing = true }, onUsage = { tab = Tab.Usage })
+                    Tab.Home -> HomeTab(
+                        state, usageVm, vm, update, promoVm, app,
+                        onRenew = {
+                            renewPlan = null
+                            renewing = true
+                        },
+                        onRenewPlan = {
+                            renewPlan = it
+                            renewing = true
+                        },
+                        onUsage = { tab = Tab.Usage },
+                        onWhatsNew = { whatsNew = true },
+                        onUpdatedSeen = app.updates::acknowledgeUpdated,
+                    )
                     Tab.Usage -> UsageTab(usageVm, state)
                     Tab.Payments -> PaymentsTab(app, provider)
                     Tab.Help -> HelpTab(state, supportVm, onNew = { route = Route.NEW_TICKET }, onOpen = { route = Route.ticket(it) })
@@ -145,13 +202,41 @@ fun SignedInScreen(state: AppState, app: AppContainer, vm: AppViewModel) {
             BottomBar(tab, onSelect = { tab = it })
         }
         if (renewing) {
-            RenewSheet(state, app, vm, onClose = { renewing = false })
+            RenewSheet(state, app, vm, onClose = { renewing = false }, preferredPlanId = renewPlan)
+        }
+        if (updateSheet && !renewing) {
+            UpdateSheet(app.updates, update, provider.name, logo = { ProviderLogo(provider, app, 40.dp) }, onClose = { updateSheet = false })
+        }
+        if (whatsNew) {
+            (update.justUpdated ?: app.updates.state.value.latest)?.let { WhatsNewSheet(it, onClose = { whatsNew = false }) }
+                ?: run { whatsNew = false }
+        }
+    }
+}
+
+/** The ISP's logo, or its initials on the brand gradient when it has none. */
+@Composable
+fun ProviderLogo(provider: Provider, app: AppContainer, size: Dp) {
+    val colors = AppTheme.colors
+    if (provider.branding.logoUrl != null) {
+        RemoteLogo(provider.branding.logoUrl, app, size)
+    } else {
+        Box(Modifier.size(size).clip(RoundedCornerShape(13.dp)).background(colors.hero), contentAlignment = Alignment.Center) {
+            Text(initials(provider.name), color = colors.onHero, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
         }
     }
 }
 
 @Composable
-private fun TopBar(provider: Provider, state: AppState, app: AppContainer, onSettings: () -> Unit) {
+private fun TopBar(
+    provider: Provider,
+    state: AppState,
+    app: AppContainer,
+    update: UpdateState,
+    online: Boolean?,
+    onUpdate: () -> Unit,
+    onSettings: () -> Unit,
+) {
     val colors = AppTheme.colors
     val first = state.account?.name?.substringBefore(' ')?.takeIf { it.isNotBlank() } ?: state.account?.username.orEmpty()
     Row(
@@ -159,21 +244,38 @@ private fun TopBar(provider: Provider, state: AppState, app: AppContainer, onSet
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Space.m),
     ) {
-        if (provider.branding.logoUrl != null) {
-            RemoteLogo(provider.branding.logoUrl, app, 42.dp)
-        } else {
-            Box(Modifier.size(42.dp).clip(RoundedCornerShape(13.dp)).background(colors.hero), contentAlignment = Alignment.Center) {
-                Text(initials(provider.name), color = colors.onHero, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
-            }
-        }
+        // Where an update lives: a dot when one waits, a ring while it downloads.
+        UpdateLogoBadge(update, 42.dp, onOpen = onUpdate) { ProviderLogo(provider, app, 42.dp) }
         Column(Modifier.weight(1f)) {
             Text(provider.name, style = MaterialTheme.typography.titleMedium, maxLines = 1)
             if (state.accountAt > 0) {
                 Text(stringResource(R.string.home_greeting, first, ago(state.accountAt)), style = MaterialTheme.typography.bodySmall, color = colors.muted, maxLines = 1)
             }
         }
-        IconButton(onClick = onSettings, modifier = Modifier.size(48.dp)) {
-            Icon(AppIcons.Settings, contentDescription = stringResource(R.string.settings))
+        // The customer's own avatar: their account and settings, with whether
+        // their line is online on its edge.
+        val label = stringResource(R.string.account_open) + when (online) {
+            true -> " · " + stringResource(R.string.account_online)
+            false -> " · " + stringResource(R.string.account_offline)
+            null -> ""
+        }
+        Box(
+            Modifier.size(48.dp).clip(CircleShape).clickable(role = Role.Button, onClickLabel = stringResource(R.string.account_open), onClick = onSettings),
+            contentAlignment = Alignment.Center,
+        ) {
+            Avatar(
+                name = state.account?.name?.takeIf { it.isNotBlank() } ?: state.account?.username.orEmpty(),
+                size = 40.dp,
+                // The contrast-corrected brand, not the hero gradient: a dark
+                // brand colour vanished against the dark theme's background.
+                ring = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
+                fill = MaterialTheme.colorScheme.surfaceContainerHigh,
+                ink = MaterialTheme.colorScheme.onSurface,
+                label = label,
+                online = online,
+                presence = if (online == true) colors.good else colors.neutral,
+                cutout = MaterialTheme.colorScheme.background,
+            )
         }
     }
 }
@@ -214,7 +316,19 @@ private fun BottomBar(selected: Tab, onSelect: (Tab) -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun HomeTab(state: AppState, usageVm: UsageVm, vm: AppViewModel, onRenew: () -> Unit, onUsage: () -> Unit) {
+private fun HomeTab(
+    state: AppState,
+    usageVm: UsageVm,
+    vm: AppViewModel,
+    update: UpdateState,
+    promoVm: PromoVm,
+    app: AppContainer,
+    onRenew: () -> Unit,
+    onRenewPlan: (Long) -> Unit,
+    onUsage: () -> Unit,
+    onWhatsNew: () -> Unit,
+    onUpdatedSeen: () -> Unit,
+) {
     val usage by usageVm.state.collectAsStateWithLifecycle()
     val account = state.account
     val provider = state.provider ?: return
@@ -228,6 +342,7 @@ private fun HomeTab(state: AppState, usageVm: UsageVm, vm: AppViewModel, onRenew
         onRefresh = {
             vm.refreshAccount()
             usageVm.load()
+            promoVm.load()
         },
         modifier = Modifier.fillMaxSize(),
     ) {
@@ -241,6 +356,20 @@ private fun HomeTab(state: AppState, usageVm: UsageVm, vm: AppViewModel, onRenew
             if (account == null) {
                 Muted(stringResource(R.string.loading_account))
                 return@Column
+            }
+            update.justUpdated?.let { JustUpdatedChip(it, onOpen = onWhatsNew, onDone = onUpdatedSeen) }
+
+            // The ISP's promotions, at the top of Home (preview).
+            val promos by promoVm.promos.collectAsStateWithLifecycle()
+            val promosHidden by promoVm.hidden.collectAsStateWithLifecycle()
+            if (!promosHidden) {
+                PromoCarousel(promos, provider.name, app, onHide = promoVm::hideForAWeek, onTap = { tap ->
+                    when (tap) {
+                        is PromoTap.Plan -> onRenewPlan(tap.packageId)
+                        is PromoTap.Link -> openUrl(context, tap.url)
+                        PromoTap.None -> Unit
+                    }
+                })
             }
 
             Hero(account, onRenew)
@@ -462,47 +591,162 @@ private fun initials(name: String) =
     name.split(Regex("\\s+")).filter { it.isNotBlank() }.take(2).joinToString("") { it.take(1).uppercase() }
 
 @Composable
-private fun SettingsScreen(state: AppState, vm: AppViewModel, onPassword: () -> Unit, onClose: () -> Unit) {
-    PageScaffold(stringResource(R.string.settings), onClose) { padding ->
+private fun SettingsScreen(
+    state: AppState,
+    app: AppContainer,
+    vm: AppViewModel,
+    update: UpdateState,
+    onPassword: () -> Unit,
+    onUpdate: () -> Unit,
+    onClose: () -> Unit,
+) {
+    val colors = AppTheme.colors
+    val context = LocalContext.current
+    val account = state.account
+    val provider = state.provider
+    PageScaffold(stringResource(R.string.account_title), onClose) { padding ->
         Column(
-            Modifier.padding(padding).padding(16.dp).verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            Modifier.padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(Space.l),
         ) {
-            SectionCard {
-                Text(state.provider?.name.orEmpty(), fontWeight = FontWeight.SemiBold)
-                Muted(stringResource(R.string.signed_in_as, state.account?.username.orEmpty()))
-            }
-            SectionCard {
-                Text(stringResource(R.string.appearance), fontWeight = FontWeight.SemiBold)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ThemeMode.entries.forEach { mode ->
-                        FilterChip(
-                            selected = state.themeMode == mode,
-                            onClick = { vm.setThemeMode(mode) },
-                            label = {
-                                Text(
-                                    stringResource(
-                                        when (mode) {
-                                            ThemeMode.System -> R.string.theme_system
-                                            ThemeMode.Light -> R.string.theme_light
-                                            ThemeMode.Dark -> R.string.theme_dark
-                                        },
-                                    ),
-                                )
-                            },
-                        )
+            // Who is signed in, on the ISP's own gradient.
+            Column(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(Radius.l)).background(colors.hero).padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(Space.m),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Space.l)) {
+                    val name = account?.name?.takeIf { it.isNotBlank() } ?: account?.username.orEmpty()
+                    Avatar(
+                        name = name,
+                        size = 68.dp,
+                        ring = listOf(colors.onHero, colors.onHero.copy(alpha = 0.35f)),
+                        fill = colors.onHero.copy(alpha = 0.16f),
+                        ink = colors.onHero,
+                        label = name,
+                    )
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(name, color = colors.onHero, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+                        Text("@" + account?.username.orEmpty(), color = colors.onHero.copy(alpha = 0.85f), style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+                        provider?.let { Text(it.name, color = colors.onHero.copy(alpha = 0.7f), style = MaterialTheme.typography.bodySmall, maxLines = 1) }
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(Space.s)) {
+                    account?.plan?.let { HeroChip(it.name, colors.onHero) }
+                    account?.accountRef?.let { ref ->
+                        val copyLabel = stringResource(R.string.home_copy_account)
+                        HeroChip(stringResource(R.string.home_account, ref), colors.onHero, AppIcons.Copy, copyLabel) { copy(context, copyLabel, ref) }
                     }
                 }
             }
-            OutlinedButton(onClick = onPassword, modifier = Modifier.fillMaxWidth().height(48.dp)) { Text(stringResource(R.string.change_password)) }
-            if (AppConfig.fixedSlug == null) {
-                OutlinedButton(onClick = { onClose(); vm.chooseAnotherProvider() }, modifier = Modifier.fillMaxWidth().height(48.dp)) {
-                    Text(stringResource(R.string.use_different_provider))
+
+            GroupLabel(stringResource(R.string.appearance))
+            ThemeSwitch(state.themeMode, vm::setThemeMode)
+
+            GroupLabel(stringResource(R.string.account_security))
+            Group {
+                SettingRow(AppIcons.Key, stringResource(R.string.change_password), onPassword)
+                if (AppConfig.fixedSlug == null) {
+                    HorizontalDivider(Modifier.padding(start = 64.dp), color = colors.line)
+                    SettingRow(AppIcons.Provider, stringResource(R.string.use_different_provider), { onClose(); vm.chooseAnotherProvider() })
                 }
             }
-            OutlinedButton(onClick = vm::signOut, modifier = Modifier.fillMaxWidth().height(48.dp)) { Text(stringResource(R.string.sign_out)) }
-            HorizontalDivider()
-            Muted(stringResource(R.string.version, BuildConfig.VERSION_NAME))
+
+            GroupLabel(stringResource(R.string.update_about))
+            AboutRow(app.updates, update, onOpen = onUpdate)
+
+            Group {
+                SettingRow(AppIcons.SignOut, stringResource(R.string.sign_out), vm::signOut, tint = colors.critical, chevron = false)
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeroChip(text: String, on: Color, icon: ImageVector? = null, iconLabel: String? = null, onClick: (() -> Unit)? = null) {
+    Row(
+        Modifier
+            .clip(CircleShape)
+            .background(on.copy(alpha = 0.16f))
+            .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClickLabel = iconLabel, onClick = onClick) else Modifier)
+            .heightIn(min = if (onClick != null) 36.dp else 0.dp)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text(text, color = on, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, maxLines = 1)
+        if (icon != null) Icon(icon, contentDescription = null, tint = on, modifier = Modifier.size(14.dp))
+    }
+}
+
+@Composable
+private fun GroupLabel(text: String) {
+    Text(
+        text.uppercase(),
+        style = MaterialTheme.typography.labelMedium,
+        color = AppTheme.colors.muted,
+        letterSpacing = 1.sp,
+        modifier = Modifier.padding(start = 4.dp, top = 4.dp).semantics { heading() },
+    )
+}
+
+@Composable
+private fun Group(content: @Composable () -> Unit) {
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(Radius.m)).background(MaterialTheme.colorScheme.surfaceContainer)) {
+        content()
+    }
+}
+
+/** One row of the Account page: an icon in a tinted square, the words, a chevron. */
+@Composable
+private fun SettingRow(icon: ImageVector, text: String, onClick: () -> Unit, tint: Color = MaterialTheme.colorScheme.onSurface, chevron: Boolean = true) {
+    Row(
+        Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onClick).heightIn(min = 60.dp).padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Space.m),
+    ) {
+        Box(Modifier.size(36.dp).clip(RoundedCornerShape(11.dp)).background(tint.copy(alpha = if (chevron) 0.08f else 0.14f)), contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(18.dp))
+        }
+        Text(text, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = if (chevron) Color.Unspecified else tint, modifier = Modifier.weight(1f))
+        if (chevron) Icon(AppIcons.ChevronRight, contentDescription = null, tint = AppTheme.colors.muted, modifier = Modifier.size(18.dp))
+    }
+}
+
+/** Phone setting / Light / Dark as one segmented control, not three loose chips. */
+@Composable
+private fun ThemeSwitch(selected: ThemeMode, onSelect: (ThemeMode) -> Unit) {
+    val colors = AppTheme.colors
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(Radius.m)).background(MaterialTheme.colorScheme.surfaceContainer).padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        ThemeMode.entries.forEach { mode ->
+            val on = mode == selected
+            val label = stringResource(
+                when (mode) {
+                    ThemeMode.System -> R.string.theme_system
+                    ThemeMode.Light -> R.string.theme_light
+                    ThemeMode.Dark -> R.string.theme_dark
+                },
+            )
+            Box(
+                Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (on) MaterialTheme.colorScheme.surfaceContainerHighest else Color.Transparent)
+                    .clickable(role = Role.RadioButton, onClickLabel = label) { onSelect(mode) }
+                    .semantics { this.selected = on }
+                    .heightIn(min = 44.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    label,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = if (on) FontWeight.Bold else FontWeight.SemiBold,
+                    color = if (on) MaterialTheme.colorScheme.onSurface else colors.muted,
+                    maxLines = 1,
+                )
+            }
         }
     }
 }

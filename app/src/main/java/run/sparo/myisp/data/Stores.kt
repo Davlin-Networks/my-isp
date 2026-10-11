@@ -116,6 +116,11 @@ class LocalStore(private val prefs: SharedPreferences) {
         get() = prefs.getString("last_username", null)
         set(value) = prefs.edit().putString("last_username", value).apply()
 
+    /** "Not now" on the promotions card: hidden until then (epoch ms). */
+    var promosHiddenUntil: Long
+        get() = prefs.getLong("promos_hidden_until", 0)
+        set(value) = prefs.edit().putLong("promos_hidden_until", value).apply()
+
     /** Everything about the signed-in customer. The ISP stays. */
     fun forgetAccount() {
         prefs.edit().remove("account").remove("account_at").apply()

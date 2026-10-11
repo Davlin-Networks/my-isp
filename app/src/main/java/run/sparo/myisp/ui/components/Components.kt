@@ -26,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
@@ -219,6 +220,39 @@ fun RemoteLogo(url: String?, app: AppContainer, size: Dp, modifier: Modifier = M
     }
     image?.let {
         Image(it, contentDescription = null, modifier = modifier.size(size).clip(RoundedCornerShape(12.dp)), contentScale = ContentScale.Fit)
+    }
+}
+
+/**
+ * A picture from the server, through the same client, disk cache and
+ * in-memory cache as the logo. [placeholder] shows until it arrives, so a
+ * slow network never moves anything around it.
+ */
+@Composable
+fun RemoteImage(
+    url: String,
+    app: AppContainer,
+    modifier: Modifier = Modifier,
+    onSize: (width: Int, height: Int) -> Unit = { _, _ -> },
+    placeholder: @Composable () -> Unit = {},
+) {
+    val image by produceState<ImageBitmap?>(app.images.get(url)?.asImageBitmap(), url) {
+        if (value != null) return@produceState
+        value = withContext(Dispatchers.IO) {
+            runCatching {
+                app.http.newCall(Request.Builder().url(url).build()).execute().use { res ->
+                    if (!res.isSuccessful) return@use null
+                    res.body?.byteStream()?.let(BitmapFactory::decodeStream)?.also { app.images.put(url, it) }
+                }
+            }.getOrNull()?.asImageBitmap()
+        }
+    }
+    val shown = image
+    LaunchedEffect(shown) { shown?.let { onSize(it.width, it.height) } }
+    if (shown != null) {
+        Image(shown, contentDescription = null, modifier = modifier, contentScale = ContentScale.Crop)
+    } else {
+        placeholder()
     }
 }
 

@@ -34,6 +34,7 @@ import run.sparo.myisp.ui.screens.SignInScreen
 import run.sparo.myisp.ui.screens.SignedInScreen
 import run.sparo.myisp.ui.screens.UnavailableScreen
 import run.sparo.myisp.ui.theme.MyIspTheme
+import run.sparo.myisp.update.InstallResults
 
 class MainActivity : ComponentActivity() {
     private val app get() = (application as MyIspApp).container
@@ -51,7 +52,10 @@ class MainActivity : ComponentActivity() {
 
         // The link that opened the app, if any - only on a fresh start, not
         // when the activity is recreated with the same intent (rotation).
-        vm.start(if (savedInstanceState == null) intent?.data else null)
+        // Opened by the installer's answer: after an update, that is the app
+        // reopening itself on the new version.
+        if (savedInstanceState == null && InstallResults.isResult(intent)) InstallResults.handle(this, intent)
+        vm.start(if (savedInstanceState == null && !InstallResults.isResult(intent)) intent?.data else null)
 
         setContent {
             val state by vm.state.collectAsStateWithLifecycle()
@@ -88,7 +92,7 @@ class MainActivity : ComponentActivity() {
                                 SignedInScreen(state, app, vm)
                             }
                         }
-                        is Phase.Unavailable -> UnavailableScreen(phase)
+                        is Phase.Unavailable -> UnavailableScreen(phase, state, app)
                     }
                 }
             }
@@ -98,6 +102,10 @@ class MainActivity : ComponentActivity() {
     /** A QR code scanned while the app is already open. */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        if (InstallResults.isResult(intent)) {
+            InstallResults.handle(this, intent)
+            return
+        }
         intent.data?.let(vm::onLink)
     }
 }

@@ -27,6 +27,14 @@ val appName = prop("appName", "My ISP")
 val appIdSuffix = prop("appIdSuffix", "")
 
 /*
+ * In-app updates (docs/self-update-plan.md): the app asks its Sparo server
+ * for newer builds of its own package and installs them through Android's
+ * installer. -PselfUpdate=false builds without it, for stores that do the
+ * updating themselves.
+ */
+val selfUpdate = prop("selfUpdate", "true").toBoolean()
+
+/*
  * Release signing, from a properties file kept outside the repository:
  * storeFile, keyAlias, storePassword, keyPassword. Default location
  * ~/.config/sparo/myisp-signing.properties, or -PsigningProps=/path. Without
@@ -52,6 +60,7 @@ android {
         buildConfigField("String", "BASE_URL", "\"$baseUrl\"")
         buildConfigField("String", "LINK_HOST", "\"$linkHost\"")
         buildConfigField("String", "TENANT_SLUG", "\"$tenantSlug\"")
+        buildConfigField("boolean", "SELF_UPDATE", selfUpdate.toString())
         resValue("string", "app_name", appName)
         manifestPlaceholders["linkHost"] = linkHost
 
