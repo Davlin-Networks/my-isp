@@ -34,6 +34,7 @@ import run.sparo.myisp.ui.screens.SignInScreen
 import run.sparo.myisp.ui.screens.SignedInScreen
 import run.sparo.myisp.ui.screens.UnavailableScreen
 import run.sparo.myisp.ui.theme.MyIspTheme
+import run.sparo.myisp.push.Push
 import run.sparo.myisp.update.InstallResults
 
 class MainActivity : ComponentActivity() {
@@ -56,6 +57,7 @@ class MainActivity : ComponentActivity() {
         // reopening itself on the new version.
         if (savedInstanceState == null && InstallResults.isResult(intent)) InstallResults.handle(this, intent)
         vm.start(if (savedInstanceState == null && !InstallResults.isResult(intent)) intent?.data else null)
+        if (savedInstanceState == null) openTicketFrom(intent)
 
         setContent {
             val state by vm.state.collectAsStateWithLifecycle()
@@ -107,5 +109,11 @@ class MainActivity : ComponentActivity() {
             return
         }
         intent.data?.let(vm::onLink)
+        openTicketFrom(intent)
+    }
+
+    /** A tapped support notification names its conversation. */
+    private fun openTicketFrom(intent: Intent?) {
+        intent?.getStringExtra(Push.EXTRA_TICKET)?.toLongOrNull()?.let(vm::openTicket)
     }
 }

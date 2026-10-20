@@ -14,6 +14,7 @@ import run.sparo.myisp.R
 import run.sparo.myisp.data.LocalStore
 import run.sparo.myisp.data.SparoApi
 import run.sparo.myisp.data.TokenStore
+import run.sparo.myisp.push.Push
 import run.sparo.myisp.update.UpdateManager
 import run.sparo.myisp.update.UpdateStore
 import java.io.File
@@ -26,6 +27,7 @@ class MyIspApp : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        container.push.start()
     }
 }
 
@@ -61,6 +63,9 @@ class AppContainer(context: Context) {
         .build()
 
     val api = SparoApi(http, AppConfig.baseUrl, sessionEnds)
+
+    /** Notifications from the ISP (support replies), through Firebase Cloud Messaging. */
+    val push = Push(context.applicationContext, api, tokens)
 
     /**
      * Logos and promotion images, decoded once per run. Bounded by memory,

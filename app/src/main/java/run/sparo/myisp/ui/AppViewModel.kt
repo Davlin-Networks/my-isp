@@ -262,8 +262,23 @@ class AppViewModel(private val app: AppContainer) : ViewModel() {
         }
     }
 
+    /** A tapped notification's conversation, opened once the customer is signed in. */
+    private val _openTicket = MutableStateFlow<Long?>(null)
+    val openTicket: StateFlow<Long?> = _openTicket
+
+    fun openTicket(id: Long) {
+        _openTicket.value = id
+    }
+
+    fun ticketOpened() {
+        _openTicket.value = null
+    }
+
     fun signOut() {
         viewModelScope.launch {
+            // This phone stops receiving first, while the session still allows the call.
+            app.push.unregister()
+            _openTicket.value = null
             // Revoke on the server first, but sign out here whatever it says.
             runCatching { app.api.logout() }
             forgetAccount()
@@ -327,6 +342,7 @@ class AppViewModel(private val app: AppContainer) : ViewModel() {
     }
 
     private suspend fun forgetEverything() {
+        if (signedIn) app.push.unregister()
         if (signedIn) runCatching { app.api.logout() }
         app.tokens.set(null)
         newSession()
