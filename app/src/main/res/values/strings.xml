@@ -189,6 +189,63 @@
     <string name="chat_copied">Copied</string>
     <string name="chat_messages">Messages with %1$s</string>
 
+    <!-- Choosing a provider (the generic build, before any ISP) -->
+    <string name="choose_welcome">Welcome to %1$s</string>
+    <string name="choose_intro">See your plan and usage, and renew with M-Pesa, all with your internet provider.</string>
+    <string name="choose_scan_title">Scan your provider\'s QR code</string>
+    <string name="choose_scan_body">Point your phone camera at the QR code on your router sticker or receipt. It opens this app on your account.</string>
+    <string name="choose_scan_button">Open camera</string>
+    <string name="choose_no_camera">Open your camera app and point it at the QR code.</string>
+    <string name="choose_or">or</string>
+    <string name="choose_code_title">Enter your provider\'s code</string>
+    <string name="choose_code_label">Provider code</string>
+    <string name="choose_code_hint">Your provider can tell you their code.</string>
+    <string name="choose_continue">Continue</string>
+    <string name="app_version">%1$s · Version %2$s</string>
+    <!-- The provider code box: the format, naming no real ISP. -->
+    <string name="choose_code_example">e.g. your-isp-name</string>
+
+    <!-- Asking for help: a new request -->
+    <string name="ask_title">How can we help?</string>
+    <string name="ask_subtitle">Your message goes straight to the %1$s team.</string>
+    <string name="ask_topic">What is it about?</string>
+    <string name="ask_details">Tell us more</string>
+    <string name="ask_add">Tap to add</string>
+    <string name="ask_send">Send to %1$s</string>
+    <string name="ask_notify">You\'ll get a notification when they reply.</string>
+    <string name="ask_count">%1$d / 2000</string>
+    <string name="ask_too_short">A few more words help them fix it faster.</string>
+    <string name="ask_hint_no_internet">Nothing loads</string>
+    <string name="ask_hint_slow">Pages crawl, videos buffer</string>
+    <string name="ask_hint_billing">Paid, charged, receipts</string>
+    <string name="ask_hint_other">Plans, moving, anything</string>
+    <string name="ask_example_no_internet">e.g. No internet since this morning. The router light is red.</string>
+    <string name="ask_example_slow">e.g. Very slow in the evenings, videos keep buffering.</string>
+    <string name="ask_example_billing">e.g. I paid KES 2,000 by M-Pesa but I\'m still not connected.</string>
+    <string name="ask_example_other">e.g. I want to change my plan.</string>
+    <string-array name="ask_phrases_no_internet">
+        <item>Since this morning</item>
+        <item>Since yesterday</item>
+        <item>The router light is red</item>
+        <item>No lights on the router</item>
+        <item>On all my devices</item>
+    </string-array>
+    <string-array name="ask_phrases_slow">
+        <item>In the evenings</item>
+        <item>All day</item>
+        <item>Videos keep buffering</item>
+        <item>Only on Wi-Fi</item>
+    </string-array>
+    <string-array name="ask_phrases_billing">
+        <item>I paid but I\'m not connected</item>
+        <item>I was charged twice</item>
+        <item>I need a receipt</item>
+    </string-array>
+    <string-array name="ask_phrases_other">
+        <item>I want to change my plan</item>
+        <item>I\'m moving house</item>
+    </string-array>
+
     <!-- Push notifications -->
     <string name="push_channel_support">Support replies</string>
     <string name="push_channel_support_about">When your provider answers one of your requests.</string>

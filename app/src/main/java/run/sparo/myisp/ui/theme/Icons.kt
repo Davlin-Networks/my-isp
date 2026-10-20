@@ -30,6 +30,14 @@ object AppIcons {
     val Alert by lazy { icon("alert", "M12 3 2 20h20L12 3z", "M12 10v4", "M12 17h.01") }
     val Info by lazy { icon("info", circle(12f, 12f, 10f), "M12 16v-4", "M12 8h.01") }
     val Check by lazy { icon("check", "M20 6 9 17l-5-5") }
+    val QrCode by lazy {
+        icon("qr", rect(3f, 3f, 5f, 5f, 1f), rect(16f, 3f, 5f, 5f, 1f), rect(3f, 16f, 5f, 5f, 1f),
+            "M21 16h-3a2 2 0 0 0-2 2v3", "M21 21v.01", "M12 7v3a2 2 0 0 1-2 2H7", "M3 12h.01", "M12 3h.01",
+            "M12 16v.01", "M16 12h1", "M21 12v.01", "M12 21v-1")
+    }
+    val Camera by lazy {
+        icon("camera", "M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z", circle(12f, 13f, 3f))
+    }
     val Lock by lazy { icon("lock", rect(5f, 11f, 14f, 10f, 2f), "M8 11V7a4 4 0 0 1 8 0v4") }
     val Share by lazy { icon("share", "M12 3v13", "M7 8l5-5 5 5", "M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5") }
     val Eye by lazy { icon("eye", "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z", circle(12f, 12f, 3f)) }
