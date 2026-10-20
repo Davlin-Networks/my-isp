@@ -126,6 +126,11 @@ class LocalStore(private val prefs: SharedPreferences) {
         get() = prefs.getLong("promos_hidden_until", 0)
         set(value) = prefs.edit().putLong("promos_hidden_until", value).apply()
 
+    /** Asked once whether they want notifications; Android remembers the answer itself. */
+    var notificationsAsked: Boolean
+        get() = prefs.getBoolean("notifications_asked", false)
+        set(value) = prefs.edit().putBoolean("notifications_asked", value).apply()
+
     /** Everything about the signed-in customer. The ISP stays. */
     fun forgetAccount() {
         prefs.edit().remove("account").remove("account_at").apply()

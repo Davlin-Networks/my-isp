@@ -168,6 +168,35 @@
     <string name="help_call">Call</string>
     <string name="help_whatsapp">WhatsApp</string>
 
+    <!-- The chat with the ISP about one request -->
+    <string name="chat_today">Today</string>
+    <string name="chat_yesterday">Yesterday</string>
+    <string name="chat_you">You</string>
+    <string name="chat_sending">Sending…</string>
+    <string name="chat_sent">Sent</string>
+    <string name="chat_seen">Seen</string>
+    <string name="chat_not_sent">Not sent · Tap to retry</string>
+    <string name="chat_placeholder">Message %1$s</string>
+    <string name="chat_send">Send</string>
+    <string name="chat_more">More</string>
+    <string name="chat_close_request">Close this request</string>
+    <string name="chat_close_confirm_title">Close this request?</string>
+    <string name="chat_close_confirm_body">Do this when your problem is solved. You can open a new request any time.</string>
+    <string name="chat_close_confirm">Close it</string>
+    <string name="chat_keep_open">Keep it open</string>
+    <string name="chat_call">Call %1$s</string>
+    <string name="chat_closed">This request is closed. Open a new one if you still need help.</string>
+    <string name="chat_copied">Copied</string>
+    <string name="chat_messages">Messages with %1$s</string>
+
+    <!-- Push notifications -->
+    <string name="push_channel_support">Support replies</string>
+    <string name="push_channel_support_about">When your provider answers one of your requests.</string>
+    <string name="push_ask_title">Get notified when %1$s replies?</string>
+    <string name="push_ask_body">We\'ll let you know the moment they answer, so you don\'t have to keep checking.</string>
+    <string name="push_ask_yes">Turn on</string>
+    <string name="push_ask_no">Not now</string>
+
     <!-- Settings -->
     <string name="appearance">Appearance</string>
     <string name="account_title">Account</string>

@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "132882398437",
+    "project_id": "sparo-d4b1e",
+    "storage_bucket": "sparo-d4b1e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:132882398437:android:d9e4cbcec67bbb786de80c",
+        "android_client_info": {
+          "package_name": "run.sparo.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBJtbmPpdHVUyQ5m6PEiQLD2i4A45ag78A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:132882398437:android:4073f13e8e6c6e5b6de80c",
+        "android_client_info": {
+          "package_name": "run.sparo.myisp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBJtbmPpdHVUyQ5m6PEiQLD2i4A45ag78A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

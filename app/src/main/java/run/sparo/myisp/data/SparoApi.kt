@@ -156,6 +156,18 @@ class SparoApi(
         request("POST", "/api/v1/my/logout")
     }
 
+    /** This phone's push token, for the signed-in account. Again whenever FCM rotates it. */
+    suspend fun registerDevice(token: String) {
+        request("POST", "/api/v1/my/devices", buildJsonObject {
+            put("platform", "android")
+            put("token", token)
+        })
+    }
+
+    suspend fun unregisterDevice(token: String) {
+        request("DELETE", "/api/v1/my/devices/${enc(token)}")
+    }
+
     // ── Plumbing ────────────────────────────────────────────────────────────
 
     private suspend fun request(

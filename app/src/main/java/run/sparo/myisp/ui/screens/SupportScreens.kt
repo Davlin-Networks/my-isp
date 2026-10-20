@@ -70,6 +70,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import run.sparo.myisp.AppContainer
 import run.sparo.myisp.data.ApiException
 import run.sparo.myisp.data.Ticket
@@ -93,7 +95,12 @@ data class SupportState(
     val threadError: String? = null,
     val busy: Boolean = false,
     val actionError: String? = null,
+    /** Messages typed into the open thread that the server has not taken yet. */
+    val pending: List<PendingMessage> = emptyList(),
 )
+
+/** A message on its way, shown at once; [failed] keeps it on screen to retry. */
+data class PendingMessage(val localId: Long, val body: String, val failed: Boolean = false)
 
 /** The same requests as the web portal's Help tab: one thread, either door. */
 class SupportVm(private val app: AppContainer) : ViewModel() {
@@ -113,7 +120,7 @@ class SupportVm(private val app: AppContainer) : ViewModel() {
     }
 
     fun open(id: Long) {
-        if (_state.value.thread?.id != id) _state.update { it.copy(thread = null) }
+        if (_state.value.thread?.id != id) _state.update { it.copy(thread = null, pending = emptyList()) }
         _state.update { it.copy(threadError = null, actionError = null) }
         viewModelScope.launch {
             try {
@@ -130,7 +137,54 @@ class SupportVm(private val app: AppContainer) : ViewModel() {
         onOpened(it.id)
     }
 
-    fun reply(id: Long, body: String, onSent: () -> Unit) = act({ app.api.reply(id, body) }) { onSent() }
+    /**
+     * Fetch the open thread again without clearing the screen. Called every
+     * few seconds while the chat is visible and when the app comes back; a
+     * failure keeps what is shown.
+     */
+    fun refresh(id: Long) {
+        viewModelScope.launch {
+            try {
+                val ticket = app.api.ticket(id)
+                if (_state.value.thread?.id == id) _state.update { it.copy(thread = ticket) }
+            } catch (_: ApiException) {
+            }
+        }
+    }
+
+    private val sendLock = Mutex()
+    private var nextLocalId = -1L
+
+    /** Show the message at once, then send it. One at a time, in order. */
+    fun send(id: Long, body: String) {
+        val message = PendingMessage(nextLocalId--, body)
+        _state.update { it.copy(pending = it.pending + message, actionError = null) }
+        deliver(id, message)
+    }
+
+    fun retry(id: Long, localId: Long) {
+        val message = _state.value.pending.find { it.localId == localId } ?: return
+        _state.update { s -> s.copy(pending = s.pending.map { if (it.localId == localId) it.copy(failed = false) else it }) }
+        deliver(id, message)
+    }
+
+    private fun deliver(id: Long, message: PendingMessage) {
+        viewModelScope.launch {
+            sendLock.withLock {
+                try {
+                    val ticket = app.api.reply(id, message.body)
+                    _state.update { s -> s.copy(thread = ticket, pending = s.pending.filterNot { it.localId == message.localId }) }
+                } catch (e: ApiException) {
+                    _state.update { s ->
+                        s.copy(
+                            pending = s.pending.map { if (it.localId == message.localId) it.copy(failed = true) else it },
+                            actionError = e.message,
+                        )
+                    }
+                }
+            }
+        }
+    }
 
     fun close(id: Long) = act({ app.api.closeTicket(id) }) { load() }
 
@@ -416,57 +470,6 @@ fun NewTicketScreen(vm: SupportVm, onOpened: (Long) -> Unit, onClose: () -> Unit
                 enabled = category.isNotEmpty() && body.trim().length >= 5,
                 busy = support.busy,
             )
-        }
-    }
-}
-
-@Composable
-fun TicketScreen(id: Long, vm: SupportVm, onClose: () -> Unit) {
-    val support by vm.state.collectAsStateWithLifecycle()
-    var reply by rememberSaveable { mutableStateOf("") }
-    LaunchedEffect(id) { vm.open(id) }
-    val ticket = support.thread?.takeIf { it.id == id }
-
-    PageScaffold(ticket?.title ?: "Request", onClose) { padding ->
-        Column(
-            Modifier.padding(padding).imePadding().verticalScroll(rememberScrollState()).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            when {
-                ticket == null && support.threadError != null -> ErrorBox(support.threadError!!, { vm.open(id) })
-                ticket == null -> Loading()
-                else -> {
-                    StatusChip(ticket.status)
-                    ticket.messages.forEach { m ->
-                        val mine = m.from == "you"
-                        Column(Modifier.fillMaxWidth(), horizontalAlignment = if (mine) Alignment.End else Alignment.Start) {
-                            Text(
-                                m.body,
-                                modifier = Modifier
-                                    .widthIn(max = 320.dp)
-                                    .clip(RoundedCornerShape(14.dp))
-                                    .background(if (mine) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh)
-                                    .padding(12.dp),
-                            )
-                            Muted((if (mine) "You" else "Your provider") + " · " + dateTime(m.at))
-                        }
-                    }
-                    support.actionError?.let { Banner(it, "error") }
-                    if (ticket.status != "closed") {
-                        OutlinedTextField(
-                            value = reply,
-                            onValueChange = { reply = it.take(2000) },
-                            label = { Text("Reply") },
-                            minLines = 2,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        PrimaryButton("Send", { vm.reply(id, reply.trim()) { reply = "" } }, enabled = reply.isNotBlank(), busy = support.busy)
-                        TextButton(onClick = { vm.close(id) }, enabled = !support.busy) { Text("My problem is solved - close this request") }
-                    } else {
-                        Muted("This request is closed. Open a new one if you still need help.")
-                    }
-                }
-            }
         }
     }
 }

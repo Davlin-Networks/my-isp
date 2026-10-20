@@ -149,6 +149,19 @@ fun SignedInScreen(state: AppState, app: AppContainer, vm: AppViewModel) {
 
     LaunchedEffect(Unit) { app.updates.checkIfDue() }
 
+    // Push: this phone, for this sign-in. Replies that arrive refresh the Help list.
+    LaunchedEffect(state.session) { app.push.register() }
+    LaunchedEffect(Unit) { app.push.supportReplies.collect { supportVm.load() } }
+    // A tapped notification: straight to that conversation.
+    val openTicket by vm.openTicket.collectAsStateWithLifecycle()
+    LaunchedEffect(openTicket) {
+        openTicket?.let {
+            tab = Tab.Help
+            route = Route.ticket(it)
+            vm.ticketOpened()
+        }
+    }
+
     // An update never comes before money: not over the Renew sheet, another
     // page, or a plan that has run out. It waits for a calm moment on Home.
     val calm = tab == Tab.Home && route == Route.NONE && !renewing &&
@@ -179,7 +192,11 @@ fun SignedInScreen(state: AppState, app: AppContainer, vm: AppViewModel) {
         )
         route == Route.PASSWORD -> return PasswordScreen(app, onClose = { route = Route.SETTINGS })
         route == Route.NEW_TICKET -> return NewTicketScreen(supportVm, onOpened = { route = Route.ticket(it) }, onClose = { route = Route.NONE })
-        route.startsWith("ticket:") -> return TicketScreen(route.removePrefix("ticket:").toLong(), supportVm, onClose = { route = Route.NONE })
+        route.startsWith("ticket:") -> return TicketScreen(
+            route.removePrefix("ticket:").toLong(), supportVm, state, app,
+            onClose = { route = Route.NONE },
+            onNew = { route = Route.NEW_TICKET },
+        )
     }
 
     val provider = state.provider ?: return

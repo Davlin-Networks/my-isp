@@ -6,6 +6,9 @@
     <!-- In-app updates: hand a verified build of this app to Android's
          installer, which always asks the customer first. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Replies from the ISP, as notifications. Asked for after the customer
+         first writes to them, never at launch (Android 13+). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".MyIspApp"
@@ -19,6 +22,22 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Myisp"
         tools:targetApi="31">
+        <!-- Pushes Android shows itself while the app is closed: our icon, and
+             the support channel when a message names none. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_stat_myisp" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="support" />
+        <service
+            android:name=".push.PushService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

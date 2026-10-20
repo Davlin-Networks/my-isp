@@ -35,6 +35,32 @@ val appIdSuffix = prop("appIdSuffix", "")
 val selfUpdate = prop("selfUpdate", "true").toBoolean()
 
 /*
+ * Push (Firebase Cloud Messaging), set up from google-services.json without
+ * the Google Services plugin. That plugin fails the build for any package
+ * the file does not list, and every branded build has its own package: one
+ * not yet added in Firebase builds and ships without push instead.
+ * Nothing in the file is secret; Firebase client keys are made to ship in apps.
+ */
+val fcm: Map<String, String> = run {
+    val file = file("google-services.json")
+    if (!file.exists()) return@run emptyMap()
+    @Suppress("UNCHECKED_CAST")
+    val json = groovy.json.JsonSlurper().parse(file) as Map<String, Any?>
+    val project = json["project_info"] as Map<*, *>
+    val packageName = "run.sparo.myisp$appIdSuffix"
+    @Suppress("UNCHECKED_CAST")
+    val client = (json["client"] as List<Map<String, Any?>>).firstOrNull {
+        ((it["client_info"] as Map<*, *>)["android_client_info"] as Map<*, *>)["package_name"] == packageName
+    } ?: return@run emptyMap()
+    mapOf(
+        "APP_ID" to (client["client_info"] as Map<*, *>)["mobilesdk_app_id"].toString(),
+        "API_KEY" to ((client["api_key"] as List<*>).first() as Map<*, *>)["current_key"].toString(),
+        "PROJECT_ID" to project["project_id"].toString(),
+        "SENDER_ID" to project["project_number"].toString(),
+    )
+}
+
+/*
  * Release signing, from a properties file kept outside the repository:
  * storeFile, keyAlias, storePassword, keyPassword. Default location
  * ~/.config/sparo/myisp-signing.properties, or -PsigningProps=/path. Without
@@ -61,6 +87,9 @@ android {
         buildConfigField("String", "LINK_HOST", "\"$linkHost\"")
         buildConfigField("String", "TENANT_SLUG", "\"$tenantSlug\"")
         buildConfigField("boolean", "SELF_UPDATE", selfUpdate.toString())
+        for (key in listOf("APP_ID", "API_KEY", "PROJECT_ID", "SENDER_ID")) {
+            buildConfigField("String", "FCM_$key", "\"${fcm[key].orEmpty()}\"")
+        }
         resValue("string", "app_name", appName)
         manifestPlaceholders["linkHost"] = linkHost
 
@@ -130,6 +159,8 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.okhttp)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

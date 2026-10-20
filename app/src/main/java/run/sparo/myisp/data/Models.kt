@@ -234,7 +234,14 @@ data class Ticket(
 
 @Immutable
 @Serializable
-data class Message(val id: Long, val from: String, val body: String, val at: String? = null)
+data class Message(
+    val id: Long,
+    val from: String,
+    val body: String,
+    val at: String? = null,
+    /** On the subscriber's own messages: when the ISP opened the request after them. */
+    @SerialName("seen_at") val seenAt: String? = null,
+)
 
 @Immutable
 data class Tickets(val tickets: List<Ticket>, val categories: Map<String, String>, val canOpen: Boolean)
