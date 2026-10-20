@@ -46,7 +46,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -90,6 +89,7 @@ import run.sparo.myisp.ui.components.Banner
 import run.sparo.myisp.ui.components.ErrorBox
 import run.sparo.myisp.ui.components.Loading
 import run.sparo.myisp.ui.components.Muted
+import run.sparo.myisp.ui.components.PrimaryButton
 import run.sparo.myisp.ui.components.RemoteLogo
 import run.sparo.myisp.ui.components.StatusChip
 import run.sparo.myisp.ui.parseIso
@@ -191,7 +191,8 @@ fun TicketScreen(id: Long, vm: SupportVm, state: AppState, app: AppContainer, on
     val support by vm.state.collectAsStateWithLifecycle()
     val ticket = support.thread?.takeIf { it.id == id }
     val provider = state.provider
-    val ispName = provider?.branding?.portalTitle?.takeIf { it.isNotBlank() } ?: provider?.name.orEmpty()
+    // The ISP by name, as its notifications are titled - not the portal's title.
+    val ispName = provider?.name.orEmpty()
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -345,9 +346,8 @@ fun TicketScreen(id: Long, vm: SupportVm, state: AppState, app: AppContainer, on
                     if (ticket.status == "closed") {
                         Column(Modifier.fillMaxWidth().padding(Space.l), verticalArrangement = Arrangement.spacedBy(Space.m)) {
                             Muted(stringResource(R.string.chat_closed))
-                            OutlinedButton(onClick = onNew, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                                Text(stringResource(R.string.help_new_request))
-                            }
+                            // The one thing left to do here, so it reads as the action.
+                            PrimaryButton(stringResource(R.string.help_new_request), onNew)
                         }
                     } else {
                         Composer(
@@ -452,8 +452,12 @@ private fun ChatBubble(
         if (row.mine) {
             Spacer(Modifier.width(48.dp))
         } else {
-            Box(Modifier.size(32.dp).padding(bottom = if (row.time != null) 18.dp else 0.dp)) {
-                if (row.avatar) IspAvatar(provider, app, ispName)
+            // Level with the bubble's bottom edge, above the time under it. The
+            // padding sits outside the 32dp box: inside, it squashed the logo.
+            Box(Modifier.padding(bottom = if (row.time != null) 22.dp else 0.dp)) {
+                Box(Modifier.size(32.dp)) {
+                    if (row.avatar) IspAvatar(provider, app, ispName)
+                }
             }
             Spacer(Modifier.width(Space.s))
         }
@@ -513,7 +517,7 @@ private fun IspAvatar(provider: Provider?, app: AppContainer, ispName: String) {
         if (logo.isNullOrBlank()) {
             Text(ispName.trim().take(1).uppercase(), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
         } else {
-            RemoteLogo(logo, app, 26.dp)
+            RemoteLogo(logo, app, 22.dp)
         }
     }
 }

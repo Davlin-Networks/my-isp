@@ -315,7 +315,9 @@ fun HelpTab(state: AppState, vm: SupportVm, onNew: () -> Unit, onOpen: (Long) ->
                             Text(stringResource(R.string.help_none), style = MaterialTheme.typography.bodyMedium, color = colors.muted, textAlign = TextAlign.Center)
                         }
                     }
-                    active.forEach { t -> TicketRow(t, dim = false) { onOpen(t.id) } }
+                    // A request's title is its topic's name: the topic, and so its icon, from that.
+                    val topicOf = { t: Ticket -> list.categories.entries.firstOrNull { it.value == t.title }?.key }
+                    active.forEach { t -> TicketRow(t, topicOf(t), dim = false) { onOpen(t.id) } }
                     if (closed.isNotEmpty()) {
                         TextButton(onClick = { showClosed = !showClosed }, modifier = Modifier.heightIn(min = 44.dp)) {
                             Text(
@@ -324,7 +326,7 @@ fun HelpTab(state: AppState, vm: SupportVm, onNew: () -> Unit, onOpen: (Long) ->
                                 fontWeight = FontWeight.SemiBold,
                             )
                         }
-                        if (showClosed) closed.forEach { t -> TicketRow(t, dim = true) { onOpen(t.id) } }
+                        if (showClosed) closed.forEach { t -> TicketRow(t, topicOf(t), dim = true) { onOpen(t.id) } }
                     }
                 }
             }
@@ -401,7 +403,7 @@ private fun SectionLabel(text: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun TicketRow(t: Ticket, dim: Boolean, onClick: () -> Unit) {
+private fun TicketRow(t: Ticket, topic: String?, dim: Boolean, onClick: () -> Unit) {
     val colors = AppTheme.colors
     Row(
         Modifier
@@ -415,7 +417,7 @@ private fun TicketRow(t: Ticket, dim: Boolean, onClick: () -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(Space.m),
     ) {
         Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(colors.brandSoft), contentAlignment = Alignment.Center) {
-            Icon(AppIcons.Help, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+            Icon(topicIcon(topic), contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(t.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -434,43 +436,6 @@ private fun HeroAction(label: String, icon: ImageVector, ink: Color, fill: Color
     ) {
         Icon(icon, contentDescription = null, tint = ink, modifier = Modifier.size(18.dp))
         Text("  $label", color = ink, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-fun NewTicketScreen(vm: SupportVm, onOpened: (Long) -> Unit, onClose: () -> Unit) {
-    val support by vm.state.collectAsStateWithLifecycle()
-    val categories = support.list?.categories.orEmpty()
-    var category by rememberSaveable { mutableStateOf(categories.keys.firstOrNull().orEmpty()) }
-    var body by rememberSaveable { mutableStateOf("") }
-
-    PageScaffold("New request", onClose) { padding ->
-        Column(
-            Modifier.padding(padding).imePadding().verticalScroll(rememberScrollState()).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text("What is it about?", fontWeight = FontWeight.SemiBold)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                categories.forEach { (key, label) ->
-                    FilterChip(selected = category == key, onClick = { category = key }, label = { Text(label) })
-                }
-            }
-            OutlinedTextField(
-                value = body,
-                onValueChange = { body = it.take(2000) },
-                label = { Text("Tell us what's happening") },
-                minLines = 4,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            support.actionError?.let { Banner(it, "error") }
-            PrimaryButton(
-                "Send",
-                { vm.create(category, body.trim(), onOpened) },
-                enabled = category.isNotEmpty() && body.trim().length >= 5,
-                busy = support.busy,
-            )
-        }
     }
 }
 

@@ -191,7 +191,7 @@ fun SignedInScreen(state: AppState, app: AppContainer, vm: AppViewModel) {
             onClose = { route = Route.NONE },
         )
         route == Route.PASSWORD -> return PasswordScreen(app, onClose = { route = Route.SETTINGS })
-        route == Route.NEW_TICKET -> return NewTicketScreen(supportVm, onOpened = { route = Route.ticket(it) }, onClose = { route = Route.NONE })
+        route == Route.NEW_TICKET -> return NewTicketScreen(supportVm, state, app, onOpened = { route = Route.ticket(it) }, onClose = { route = Route.NONE })
         route.startsWith("ticket:") -> return TicketScreen(
             route.removePrefix("ticket:").toLong(), supportVm, state, app,
             onClose = { route = Route.NONE },

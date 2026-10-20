@@ -1,5 +1,13 @@
 package run.sparo.myisp.ui.screens
 
+import run.sparo.myisp.BuildConfig
+
+import androidx.compose.foundation.layout.Spacer
+
+import android.widget.Toast
+
+import android.provider.MediaStore
+
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
@@ -86,34 +94,111 @@ private fun EntryColumn(content: @Composable () -> Unit) {
     ) { content() }
 }
 
-/** Generic build, no ISP yet. The QR code is scanned with the phone's own camera. */
+/**
+ * Generic build, no ISP yet. Two ways in: the ISP's QR code, read by the
+ * phone's own camera (it opens this app on their account through the app
+ * link), or the code the ISP gives out.
+ */
 @Composable
 fun ChooseProviderScreen(phase: Phase.ChooseProvider, hasProvider: Boolean, vm: AppViewModel) {
     var code by rememberSaveable { mutableStateOf("") }
+    val context = LocalContext.current
+    val appName = stringResource(R.string.app_name)
+    val noCamera = stringResource(R.string.choose_no_camera)
 
-    EntryColumn {
-        Text("Your internet provider", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Muted(
-            "Scan your provider's QR code with your phone camera - it opens this app on their account. " +
-                "Or type the code they gave you.",
-            Modifier.fillMaxWidth(),
-        )
-        Gap(4.dp)
-        OutlinedTextField(
-            value = code,
-            onValueChange = { code = it },
-            label = { Text("Provider code") },
-            placeholder = { Text("e.g. kilimani-fibre") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go),
-            keyboardActions = KeyboardActions(onGo = { vm.lookUpTyped(code) }),
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .safeDrawingPadding()
+            .imePadding()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp, vertical = 16.dp),
+    ) {
+        Spacer(Modifier.weight(1f))
+
+        // Welcome
+        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(
+                Modifier.size(72.dp).clip(RoundedCornerShape(22.dp)).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(AppIcons.Wifi, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(34.dp))
+            }
+            Text(stringResource(R.string.choose_welcome, appName), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+            Muted(stringResource(R.string.choose_intro), Modifier.fillMaxWidth())
+        }
+        Gap(28.dp)
+
+        // 1. The QR code
+        Column(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.surfaceContainer).padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                Box(
+                    Modifier.size(48.dp).clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(AppIcons.QrCode, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(26.dp))
+                }
+                Text(stringResource(R.string.choose_scan_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            }
+            Muted(stringResource(R.string.choose_scan_body))
+            OutlinedButton(
+                onClick = {
+                    val opened = runCatching {
+                        context.startActivity(Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    }.isSuccess
+                    if (!opened) Toast.makeText(context, noCamera, Toast.LENGTH_LONG).show()
+                },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                shape = RoundedCornerShape(14.dp),
+            ) {
+                Icon(AppIcons.Camera, contentDescription = null, modifier = Modifier.size(18.dp))
+                Text("  " + stringResource(R.string.choose_scan_button), fontWeight = FontWeight.SemiBold)
+            }
+        }
+
+        // or
+        Row(Modifier.fillMaxWidth().padding(vertical = 18.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            HorizontalDivider(Modifier.weight(1f), color = AppTheme.colors.line)
+            Text(stringResource(R.string.choose_or), style = MaterialTheme.typography.labelMedium, color = AppTheme.colors.muted)
+            HorizontalDivider(Modifier.weight(1f), color = AppTheme.colors.line)
+        }
+
+        // 2. The code
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(stringResource(R.string.choose_code_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            OutlinedTextField(
+                value = code,
+                onValueChange = { code = it },
+                label = { Text(stringResource(R.string.choose_code_label)) },
+                placeholder = { Text(stringResource(R.string.choose_code_example)) },
+                leadingIcon = { Icon(AppIcons.Provider, contentDescription = null) },
+                supportingText = { Text(stringResource(R.string.choose_code_hint)) },
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp),
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go),
+                keyboardActions = KeyboardActions(onGo = { vm.lookUpTyped(code) }),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            phase.error?.let { Banner(it, "error") }
+            PrimaryButton(stringResource(R.string.choose_continue), { vm.lookUpTyped(code) }, enabled = code.isNotBlank(), busy = phase.busy)
+            if (hasProvider) {
+                TextButton(onClick = vm::cancelConfirm, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.back)) }
+            }
+        }
+
+        Spacer(Modifier.weight(1f))
+        Gap(24.dp)
+        Text(
+            stringResource(R.string.app_version, appName, BuildConfig.VERSION_NAME),
+            style = MaterialTheme.typography.labelSmall,
+            color = AppTheme.colors.muted,
+            textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth(),
         )
-        phase.error?.let { Banner(it, "error") }
-        PrimaryButton("Continue", { vm.lookUpTyped(code) }, enabled = code.isNotBlank(), busy = phase.busy)
-        if (hasProvider) {
-            TextButton(onClick = vm::cancelConfirm) { Text("Back") }
-        }
     }
 }
 
@@ -146,7 +231,9 @@ fun SignInScreen(state: AppState, app: AppContainer, vm: AppViewModel) {
     var forgotNote by remember { mutableStateOf<String?>(null) }
     val needUsername = stringResource(R.string.forgot_need_username)
 
-    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).imePadding().verticalScroll(rememberScrollState())) {
+    // The card's colour behind everything, so the card runs to the bottom of
+    // the screen however short the form is - not a darker band under it.
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainer).imePadding().verticalScroll(rememberScrollState())) {
         // The ISP's own header: its gradient, its logo, its name.
         Column(
             Modifier.fillMaxWidth().background(colors.hero).statusBarsPadding().padding(start = 32.dp, end = 32.dp, top = 48.dp, bottom = 72.dp),

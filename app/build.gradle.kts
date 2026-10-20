@@ -80,8 +80,8 @@ android {
         applicationId = "run.sparo.myisp$appIdSuffix"
         minSdk = 24
         targetSdk = 37
-        versionCode = 3
-        versionName = "1.2.0"
+        versionCode = 4
+        versionName = "1.3.0"
 
         buildConfigField("String", "BASE_URL", "\"$baseUrl\"")
         buildConfigField("String", "LINK_HOST", "\"$linkHost\"")
